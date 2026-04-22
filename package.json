@@ -1,0 +1,14 @@
+{
+    "name": "threads-fortune",
+    "version": "1.0.0",
+    "private": true,
+    "engines": {
+        "node": "24.x"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.98.0",
+        "dotenv": "^17.3.1",
+        "node-fetch": "^2.7.0",
+        "three": "^0.183.1"
+    }
+}

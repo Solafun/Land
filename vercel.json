@@ -1,0 +1,43 @@
+{
+    "version": 2,
+    "buildCommand": "npm install",
+    "installCommand": "npm install",
+    "framework": null,
+    "functions": {
+        "api/action.js": {
+            "maxDuration": 30
+        },
+        "api/webhook.js": {
+            "maxDuration": 30
+        }
+    },
+    "rewrites": [
+        {
+            "source": "/api/action",
+            "destination": "/api/action"
+        },
+        {
+            "source": "/api/webhook",
+            "destination": "/api/webhook"
+        }
+    ],
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "Content-Security-Policy",
+                    "value": "default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval';"
+                },
+                {
+                    "key": "X-Content-Type-Options",
+                    "value": "nosniff"
+                },
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "*"
+                }
+            ]
+        }
+    ]
+}

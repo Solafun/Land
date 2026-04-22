@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="referrer" content="no-referrer">
+    <title>Threads Stars</title>
+    <meta name="description"
+        content="Threads Stars — roll, earn stars, and climb the leaderboard in this Telegram Mini App!">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/css/style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <!-- Шрифт Nunito/Varela Round хорошо подходит для пухлого дизайна -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200;400;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+
+<body ontouchstart="">
+    <div id="app" class="app-loading">
+        <!-- Fullscreen floating avatars background -->
+        <canvas id="bg-canvas"></canvas>
+            <!-- MAP TAB -->
+            <div id="map-tab" class="tab-content active" style="padding: 0; position: relative; height: 100vh; overflow: hidden;">
+                <div id="globe-container" style="width: 100%; height: 100%;"></div>
+                
+                <div class="map-overlay-top">
+                    <div class="clay-badge">
+                        <span id="active-users-count">...</span>
+                        <span style="font-size: 10px; margin-left: 4px; opacity: 0.8;">Online</span>
+                    </div>
+                </div>
+
+                <div class="map-overlay-bottom">
+                    <div class="location-status glass-panel">
+                        <span id="location-text">Detecting location...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NEARBY TAB -->
+            <div id="nearby-tab" class="tab-content">
+                <h2 class="page-title" data-i18n="nearby_title">People Nearby</h2>
+
+                <div class="clay-input-wrapper">
+                    <span class="at-symbol">@</span>
+                    <input type="text" id="search-input" placeholder="username" autocomplete="off">
+                    <button id="search-btn" class="clay-icon-btn">Go</button>
+                </div>
+                
+                <div id="nearby-list" class="clay-list">
+                    <div class="loading-state">Finding people around you...</div>
+                </div>
+            </div>
+
+            <!-- PROFILE TAB -->
+            <div id="profile-tab" class="tab-content">
+                <!-- Profile content remains mostly the same, but simplified -->
+                <div class="clay-card profile-main-card">
+                    <div class="avatar-clay" id="user-avatar"></div>
+                    <div class="profile-info-clay">
+                        <div class="username" id="user-name">Loading...</div>
+                        <div id="profile-threads-info" class="threads-profile-badge hidden">
+                            <i class="fa-brands fa-threads threads-logo-icon"></i>
+                            <span id="profile-threads-nick" class="threads-nick"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="clay-card" style="margin-top: 15px;">
+                    <div style="text-align: center; padding: 10px;">
+                        <div class="stat-label">Your Location</div>
+                        <div class="stat-value" id="profile-location-text" style="font-size: 14px; margin-top: 5px;">Not shared</div>
+                    </div>
+                </div>
+
+                <button id="deposit-btn" class="clay-btn clay-secondary" data-i18n="profile_deposit_btn">
+                    Deposit Stars
+                </button>
+            </div>
+
+            <!-- NAVIGATION -->
+            <nav class="clay-nav">
+                <button class="nav-item active" data-tab="map">
+                    <span data-i18n="nav_map">Map</span>
+                </button>
+                <button class="nav-item" data-tab="nearby">
+                    <span data-i18n="nav_nearby">Nearby</span>
+                </button>
+                <button class="nav-item" data-tab="profile">
+                    <span data-i18n="nav_profile">Profile</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- CHALLENGES PAGE -->
+        <div id="challenges-page" class="clay-modal-page">
+            <h2 class="page-title" style="text-align: center;">🎁 <span data-i18n="challenges_title">Испытания</span></h2>
+            <div id="challenges-list" class="challenges-grid"></div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="settings-page" class="clay-modal-page">
+            <h2 class="page-title" style="text-align: center;" data-i18n="settings_title">Settings</h2>
+            <div class="clay-card">
+                <h3 class="section-title" data-i18n="settings_language_title"
+                    style="text-align:center; margin-bottom: 15px;">Language</h3>
+                <div class="clay-grid-2" id="lang-options">
+                    <button class="clay-btn clay-secondary lang-option selected" data-lang="en">
+                        <span>English</span> <span class="lang-check">●</span>
+                    </button>
+                    <button class="clay-btn clay-secondary lang-option" data-lang="ru">
+                        <span>Русский</span> <span class="lang-check" style="display:none">●</span>
+                    </button>
+                </div>
+
+            </div>
+
+            <div id="settings-threads-section" class="clay-card hidden" style="margin-top:15px;">
+                <h3 class="section-title" style="text-align:center; margin-bottom: 15px;">Threads</h3>
+                <div id="settings-threads-connected" class="threads-settings-row" style="text-align: center;">
+                    <span id="settings-threads-status" style="font-size: 14px; color: var(--text-mutted);"></span>
+                    <button id="disconnect-threads-btn" class="clay-btn clay-danger"
+                        data-i18n="threads_settings_disconnect"
+                        style="margin-top:10px; font-size: 14px; padding: 10px; width: 100%;">
+                        Отключить профиль
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DEPOSIT MODAL -->
+        <div id="deposit-modal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="clay-card modal-content">
+                <div class="modal-header">
+                    <h2 data-i18n="deposit_title">Deposit</h2>
+                    <button class="modal-close">✕</button>
+                </div>
+                <div class="clay-grid-2">
+                    <button class="clay-btn clay-secondary deposit-btn" data-amount="10">
+                        10 <svg class="inline-star clay-star" viewBox="0 0 24 24" width="16" height="16"
+                            fill="currentColor">
+                            <path
+                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                    </button>
+                    <button class="clay-btn clay-secondary deposit-btn" data-amount="50">
+                        50 <svg class="inline-star clay-star" viewBox="0 0 24 24" width="16" height="16"
+                            fill="currentColor">
+                            <path
+                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                    </button>
+                    <button class="clay-btn clay-secondary deposit-btn" data-amount="100">
+                        100 <svg class="inline-star clay-star" viewBox="0 0 24 24" width="16" height="16"
+                            fill="currentColor">
+                            <path
+                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                    </button>
+                    <button class="clay-btn clay-secondary deposit-btn" data-amount="500">
+                        500 <svg class="inline-star clay-star" viewBox="0 0 24 24" width="16" height="16"
+                            fill="currentColor">
+                            <path
+                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="clay-input-wrapper" style="margin-top:20px;">
+                    <input type="number" id="custom-deposit" placeholder="Custom amount"
+                        data-i18n-placeholder="deposit_custom_amount" min="1">
+                </div>
+                <button id="custom-deposit-btn" class="clay-btn clay-primary" style="margin-top:20px;"
+                    data-i18n="deposit_pay">Pay</button>
+            </div>
+        </div>
+
+        <!-- VERIFICATION MODAL -->
+        <div id="verify-modal" class="modal">
+            <div class="modal-overlay" id="verify-modal-overlay"></div>
+            <div class="clay-card modal-content">
+                <div class="modal-header">
+                    <h2 data-i18n="verify_modal_title" style="display: flex; align-items: center; gap: 8px;">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--accent)"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        <span data-i18n="verify_modal_title">Верификация Threads</span>
+                    </h2>
+                    <button class="modal-close" id="verify-modal-close">✕</button>
+                </div>
+
+                <!-- Step 1: Enter nickname -->
+                <div id="verify-step-1">
+                    <p style="color:var(--text-mutted);font-size:14px;margin-bottom:16px;"
+                        data-i18n="verify_step_1_text">Введи свой никнейм в Threads
+                        для привязки профиля</p>
+                    <div class="clay-input-wrapper">
+                        <span class="at-symbol">@</span>
+                        <input type="text" id="verify-nick-input" placeholder="username" autocomplete="off">
+                        <button id="verify-search-btn" class="clay-icon-btn" data-i18n="verify_find_btn">Найти</button>
+                    </div>
+                    <div id="verify-search-result" style="text-align:center;padding:8px 0;font-size:14px;"></div>
+                </div>
+
+                <!-- Step 2: Publish post -->
+                <div id="verify-step-2" class="hidden">
+                    <div class="verify-profile-found" id="verify-profile-found-msg">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#10b981" stroke-width="3"
+                            stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span id="verify-found-nick-label"></span>
+                    </div>
+                    <div class="verify-code-box">
+                        <div style="font-size:12px;color:var(--text-mutted);margin-bottom:6px;"
+                            data-i18n="verify_step_2_code_label">Твой код верификации:
+                        </div>
+                        <div id="verify-code-display" class="verify-code">STARS-XXXXXX</div>
+                    </div>
+                    <p style="font-size:13px;color:var(--text-mutted);margin:12px 0;"
+                        data-i18n="verify_step_2_publish_text">Опубликуй пост в Threads с этим
+                        текстом:</p>
+                    <div class="verify-post-preview" id="verify-post-preview"></div>
+                    <div id="copy-verify-text-btn" class="clay-copy-btn">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span data-i18n="verify_step_2_copy_btn">Копировать текст</span>
+                    </div>
+                    <button id="verify-publish-btn" class="clay-btn clay-primary"
+                        style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                        </svg>
+                        <span data-i18n="verify_step_2_publish_btn">Опубликовать пост в Threads</span>
+                    </button>
+                </div>
+
+                <!-- Step 3: Check verification -->
+                <div id="verify-step-3" class="hidden">
+                    <div class="verify-profile-found"
+                        style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span data-i18n="verify_step_3_title">Пост опубликован?</span>
+                    </div>
+                    <p style="font-size:13px;color:var(--text-mutted);margin:12px 0 16px;"
+                        data-i18n="verify_step_3_text">После публикации нажми кнопку
+                        ниже — мы проверим наличие кода в твоём профиле.</p>
+                    <button id="verify-check-btn" class="clay-btn clay-primary" data-i18n="verify_step_3_check_btn"
+                        style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <span data-i18n="verify_step_3_check_btn">Проверить</span>
+                    </button>
+                    <div id="verify-check-result" style="text-align:center;padding:12px 0;font-size:14px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading"></div>
+
+        <!-- MODE STUBS -->
+        <div id="maintenance-stub" class="mode-stub hidden">
+            <div class="stub-content clay-card">
+                <div class="stub-icon">
+                    <svg viewBox="0 0 24 24" width="60" height="60" fill="none" stroke="var(--accent)"
+                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                        style="filter: drop-shadow(0 0 15px var(--accent-glow));">
+                        <path
+                            d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
+                        </path>
+                    </svg>
+                </div>
+                <h1 data-i18n="maintenance_title">Технические работы</h1>
+                <p data-i18n="maintenance_text">В приложении ведутся технические работы.</p>
+            </div>
+        </div>
+
+        <div id="blocked-stub" class="mode-stub hidden">
+            <div class="stub-content clay-card">
+                <div class="stub-icon">
+                    <svg viewBox="0 0 24 24" width="60" height="60" fill="none" stroke="#ef4444" stroke-width="1.5"
+                        stroke-linecap="round" stroke-linejoin="round"
+                        style="filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.4));">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                    </svg>
+                </div>
+                <h1 data-i18n="blocked_title">Доступ закрыт</h1>
+                <p data-i18n="blocked_text">Ваш аккаунт был заблокирован за нарушение правил сервиса.</p>
+            </div>
+        </div>
+
+        <div id="verification-stub" class="mode-stub hidden">
+            <div class="stub-content clay-card">
+                <div class="stub-icon">
+                    <svg viewBox="0 0 24 24" width="60" height="60" fill="none" stroke="var(--accent)"
+                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                        style="filter: drop-shadow(0 0 15px var(--accent-glow));">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                </div>
+                <h1 data-i18n="verify_only_title">Только верификация</h1>
+
+                <div id="verify-only-standalone-container">
+                    <!-- Step 1: Input -->
+                    <div id="vo-step-1">
+                        <p style="color:var(--text-mutted);font-size:14px;margin-bottom:16px;"
+                            data-i18n="verify_only_text">Привяжите свой Threads профиль ниже.</p>
+                        <div class="clay-input-wrapper">
+                            <span class="at-symbol">@</span>
+                            <input type="text" id="vo-nick-input" placeholder="username" autocomplete="off">
+                            <button id="vo-search-btn" class="clay-icon-btn" data-i18n="verify_find_btn">Найти</button>
+                        </div>
+                        <div id="vo-search-result" style="text-align:center;padding:8px 0;font-size:14px;"></div>
+                    </div>
+
+                    <!-- Step 2: Code (Initially Hidden) -->
+                    <div id="vo-step-2" class="hidden">
+                        <div class="verify-profile-found" id="vo-profile-found-msg">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#10b981"
+                                stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                                style="margin-right: 8px;">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span id="vo-found-nick-label"></span>
+                        </div>
+                        <div class="verify-code-box">
+                            <div style="font-size:12px;color:var(--text-mutted);margin-bottom:6px;"
+                                data-i18n="verify_step_2_code_label">Твой код верификации:</div>
+                            <div id="vo-code-display" class="verify-code">STARS-XXXXXX</div>
+                        </div>
+
+                        <div style="margin-top:20px; text-align: left;">
+                            <div style="font-size:12px;color:var(--text-mutted);margin-bottom:6px;"
+                                data-i18n="verify_step_2_publish_text">Опубликуй пост в Threads с этим текстом:</div>
+                            <div id="vo-post-preview" class="verify-post-preview" style="margin-bottom: 12px;">...</div>
+                        </div>
+
+                        <div id="vo-copy-btn" class="clay-copy-btn" style="margin: 0 auto 15px;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span data-i18n="verify_step_2_copy_btn">Копировать</span>
+                        </div>
+
+                        <button id="vo-publish-btn" class="clay-btn clay-primary"
+                            style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                            </svg>
+                            <span data-i18n="verify_step_2_publish_btn">Опубликовать</span>
+                        </button>
+
+                        <button id="vo-check-btn" class="clay-btn clay-primary hidden"
+                            style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <span data-i18n="verify_step_3_check_btn">Проверить</span>
+                        </button>
+                        <div id="vo-check-result" style="text-align:center;padding:12px 0;font-size:14px;"></div>
+                    </div>
+
+                    <!-- Step 3: Success (Handled via showVerificationOnlySuccess in JS) -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SPLASH SCREEN -->
+        <div id="splash-screen" class="splash-screen"></div>
+    </div>
+
+    <script src="/js/telegram.js"></script>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/glare.js"></script>
+    <script type="module" src="/js/app.js"></script>
+</body>
+
+</html>

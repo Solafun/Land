@@ -1007,7 +1007,8 @@ async function updateLocation(req, res, user) {
             const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
             if (geoRes.ok) {
                 const geoData = await geoRes.json();
-                country = geoData.countryName;
+                // Get most descriptive location name available
+                country = geoData.countryName || geoData.principalSubdivision || geoData.locality || geoData.city;
             }
         } catch (e) {
             console.warn('Country lookup failed:', e.message);

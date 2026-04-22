@@ -408,17 +408,31 @@ const App = {
     },
 
     async updateUserLocation(lat, lng) {
+        this.currentLat = lat;
+        this.currentLng = lng;
         try {
             const data = await this.apiRequest('update-location', { lat, lng });
             if (data.success) {
                 this.renderNearbyList(data.nearby);
                 
                 // Update country display
+                const statusPanel = document.querySelector('.location-status');
                 const locText = document.getElementById('location-text');
                 const profLocText = document.getElementById('profile-location-text');
+                
                 if (data.country) {
                     if (locText) locText.textContent = `Location: ${data.country}`;
                     if (profLocText) profLocText.textContent = data.country;
+                }
+
+                if (statusPanel && !statusPanel.dataset.bound) {
+                    statusPanel.style.cursor = 'pointer';
+                    statusPanel.addEventListener('click', () => {
+                        if (this.earthMap && this.currentLat) {
+                            this.earthMap.focusUser(this.currentLat, this.currentLng);
+                        }
+                    });
+                    statusPanel.dataset.bound = "true";
                 }
             }
         } catch (e) {

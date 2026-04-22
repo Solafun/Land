@@ -1057,7 +1057,24 @@ module.exports = async function handler(req, res) {
         if (action === 'leaderboard') return await getLeaderboard(req, res);
 
         // Авторизация (используем встроенную функцию)
-        const user = verifyTelegramData(body.initData);
+        let user = verifyTelegramData(body.initData);
+
+        // Внедрение Bypass для автоматизации (Vercel Protection Bypass)
+        const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+        const providedBypass = req.headers['x-vercel-protection-bypass'] || req.query?.['x-vercel-protection-bypass'];
+
+        if (!user && bypassSecret && providedBypass === bypassSecret) {
+            console.log('Automation Bypass triggered');
+            // Мок-пользователь для автоматизированных тестов
+            user = { 
+                id: 1, 
+                first_name: 'Automation', 
+                last_name: 'Robot', 
+                username: 'automation_bot',
+                language_code: 'en'
+            };
+        }
+
         if (!user) {
             return res.status(401).json({ success: false, error: 'Unauthorized: Invalid Telegram InitData' });
         }

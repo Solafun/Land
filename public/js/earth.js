@@ -31,7 +31,7 @@ export class EarthMap {
         this.scene.add(dLight);
 
         // Globe
-        const geometry = new THREE.SphereGeometry(97, 64, 64);
+        const geometry = new THREE.SphereGeometry(87, 64, 64);
         const textureLoader = new THREE.TextureLoader();
         
         // Using a high-quality dark earth texture for continents
@@ -105,11 +105,11 @@ export class EarthMap {
     }
 
     latLngToVector3(lat, lng, radius) {
-        // Correct mapping for standard Earth textures to align Prime Meridian with Z axis
+        // Correcting mapping for standard spherical textures
         const phi = (90 - lat) * (Math.PI / 180);
-        const theta = (lng + 90) * (Math.PI / 180);
+        const theta = (lng + 180) * (Math.PI / 180);
 
-        const x = radius * Math.sin(phi) * Math.cos(theta);
+        const x = -radius * Math.sin(phi) * Math.cos(theta);
         const z = radius * Math.sin(phi) * Math.sin(theta);
         const y = radius * Math.cos(phi);
 
@@ -117,7 +117,7 @@ export class EarthMap {
     }
     
     focusUser(lat, lng) {
-        const coords = this.latLngToVector3(lat, lng, 220); // Closer zoom
+        const coords = this.latLngToVector3(lat, lng, 180); // Closer for smaller globe
         this.camera.position.copy(coords);
         this.controls.autoRotate = false;
         this.controls.update();

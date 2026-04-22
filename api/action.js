@@ -1004,11 +1004,13 @@ async function updateLocation(req, res, user) {
         // Fetch country name via reverse geocoding
         let country = null;
         try {
-            const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+            // Using Nominatim as it's more accurate for country/region detection
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {
+                headers: { 'User-Agent': 'LandApp/1.0' }
+            });
             if (geoRes.ok) {
                 const geoData = await geoRes.json();
-                // Get most descriptive location name available
-                country = geoData.countryName || geoData.principalSubdivision || geoData.locality || geoData.city;
+                country = geoData.address.country || geoData.address.state || geoData.address.region || geoData.display_name.split(',').pop().trim();
             }
         } catch (e) {
             console.warn('Country lookup failed:', e.message);

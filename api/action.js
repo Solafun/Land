@@ -235,15 +235,12 @@ async function getInternalLeaderboard(limit = 50, offset = 0) {
 // --- HANDLERS ---
 async function handleInitApp(req, res, user) {
     try {
-        const [userData, leaderboard] = await Promise.all([
-            getInternalUserData(user),
-            getInternalLeaderboard(50, 0)
-        ]);
+        const userData = await getInternalUserData(user);
 
         return res.status(200).json({
             success: true,
             ...userData,
-            leaderboard
+            leaderboard: [] // Return empty list for now
         });
     } catch (error) {
         console.error('Init App Error:', error);
@@ -263,8 +260,7 @@ async function initUser(req, res, user) {
 
 async function getLeaderboard(req, res) {
     try {
-        const leaderboard = await getInternalLeaderboard(50, 0);
-        return res.status(200).json({ success: true, leaderboard });
+        return res.status(200).json({ success: true, leaderboard: [] });
     } catch (error) {
         console.error('Leaderboard error:', error);
         return res.status(500).json({ success: false, error: 'Database error' });

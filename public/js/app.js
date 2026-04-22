@@ -412,8 +412,13 @@ const App = {
             const data = await this.apiRequest('update-location', { lat, lng });
             if (data.success) {
                 this.renderNearbyList(data.nearby);
-                if (this.earthMap) {
-                    // Update user's view if they are first time or just for visual
+                
+                // Update country display
+                const locText = document.getElementById('location-text');
+                const profLocText = document.getElementById('profile-location-text');
+                if (data.country) {
+                    if (locText) locText.textContent = `Location: ${data.country}`;
+                    if (profLocText) profLocText.textContent = data.country;
                 }
             }
         } catch (e) {
@@ -497,27 +502,7 @@ const App = {
         this.showToast(`Viewing @${username}`, 'info');
     },
 
-    updateSpinButton() {
-        const btnText = document.getElementById('spin-btn-text');
-        const costText = document.getElementById('spin-cost');
-        if (!btnText || !costText) return;
-        btnText.textContent = I18n.t('spin_button');
-        if (this.freeSpins > 0) {
-            costText.textContent = I18n.t('spin_free', { n: this.freeSpins });
-        } else {
-            costText.textContent = I18n.t('spin_paid');
-        }
-    },
 
-    updateBalance(balance, freeSpins) {
-        if (balance !== undefined) this.balance = balance;
-        if (freeSpins !== undefined) this.freeSpins = freeSpins;
-        const hb = document.getElementById('header-balance');
-        if (hb) hb.textContent = this.balance;
-        const sf = document.getElementById('stat-free');
-        if (sf) sf.textContent = this.freeSpins;
-        this.updateSpinButton();
-    },
 
     async apiRequest(action, data = {}, retries = 3) {
         try {
@@ -564,9 +549,8 @@ const App = {
         try {
             const data = await this.apiRequest('init-app');
             if (data.success) {
-                // User & Balance
+                // User UI
                 this.userData = data.user;
-                this.updateBalance(data.user.balance, data.user.free_spins);
                 this.updateProfileUI(data.user);
 
                 // History
@@ -600,13 +584,6 @@ const App = {
 
         const sid = document.getElementById('stat-id');
         if (sid) sid.textContent = user.id;
-
-        const ss = document.getElementById('stat-spins');
-        const sd = document.getElementById('stat-deposited');
-        if (ss) ss.textContent = user.total_spins || 0;
-        if (sd) sd.textContent = user.total_deposited || 0;
-        const se = document.getElementById('stat-earned');
-        if (se) se.textContent = user.threads_star_balance || 0;
 
         this.updateProfileVerificationUI(user);
     },

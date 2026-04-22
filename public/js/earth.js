@@ -34,16 +34,17 @@ export class EarthMap {
         const geometry = new THREE.SphereGeometry(100, 64, 64);
         const textureLoader = new THREE.TextureLoader();
         
-        // Using a stylized dark map texture
-        // For now, let's use a solid color with a grid since I don't have a URL for a map texture readily available that I'm sure works
-        // Actually, I'll try a common NASA one or just a beautiful blue/dark material
+        // Using a high-quality dark earth texture for continents
+        const earthTexture = textureLoader.load('https://unpkg.com/three-globe/example/img/earth-dark.jpg');
+        
         const material = new THREE.MeshPhongMaterial({
-            color: 0x111122,
-            emissive: 0x000000,
+            map: earthTexture,
+            color: 0xffffff, // Keep white to let texture show its colors
+            emissive: 0x111122,
             specular: 0x333333,
             shininess: 5,
             transparent: true,
-            opacity: 0.9
+            opacity: 0.95
         });
 
         this.globe = new THREE.Mesh(geometry, material);

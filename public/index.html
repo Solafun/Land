@@ -82,10 +82,6 @@
                         <div class="stat-value" id="profile-location-text" style="font-size: 14px; margin-top: 5px;">Not shared</div>
                     </div>
                 </div>
-
-                <button id="deposit-btn" class="clay-btn clay-secondary" data-i18n="profile_deposit_btn">
-                    Deposit Stars
-                </button>
             </div>
 
             <!-- NAVIGATION -->
@@ -102,11 +98,6 @@
             </nav>
         </div>
 
-        <!-- CHALLENGES PAGE -->
-        <div id="challenges-page" class="clay-modal-page">
-            <h2 class="page-title" style="text-align: center;">🎁 <span data-i18n="challenges_title">Испытания</span></h2>
-            <div id="challenges-list" class="challenges-grid"></div>
-        </div>
 
         <!-- SETTINGS -->
         <div id="settings-page" class="clay-modal-page">
@@ -138,52 +129,6 @@
             </div>
         </div>
 
-        <!-- DEPOSIT MODAL -->
-        <div id="deposit-modal" class="modal">
-            <div class="modal-overlay"></div>
-            <div class="clay-card modal-content">
-                <div class="modal-header">
-                    <h2 data-i18n="deposit_title">Deposit</h2>
-                    <button class="modal-close">✕</button>
-                </div>
-                <div class="clay-grid-2">
-                    <button class="clay-btn clay-secondary deposit-btn" data-amount="10">
-                        10 <svg class="inline-star clay-star" viewBox="0 0 24 24" width="16" height="16"
-                            fill="currentColor">
-                            <path
-                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                    </button>
-                    <button class="clay-btn clay-secondary deposit-btn" data-amount="50">
-                        50 <svg class="inline-star clay-star" viewBox="0 0 24 24" width="16" height="16"
-                            fill="currentColor">
-                            <path
-                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                    </button>
-                    <button class="clay-btn clay-secondary deposit-btn" data-amount="100">
-                        100 <svg class="inline-star clay-star" viewBox="0 0 24 24" width="16" height="16"
-                            fill="currentColor">
-                            <path
-                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                    </button>
-                    <button class="clay-btn clay-secondary deposit-btn" data-amount="500">
-                        500 <svg class="inline-star clay-star" viewBox="0 0 24 24" width="16" height="16"
-                            fill="currentColor">
-                            <path
-                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="clay-input-wrapper" style="margin-top:20px;">
-                    <input type="number" id="custom-deposit" placeholder="Custom amount"
-                        data-i18n-placeholder="deposit_custom_amount" min="1">
-                </div>
-                <button id="custom-deposit-btn" class="clay-btn clay-primary" style="margin-top:20px;"
-                    data-i18n="deposit_pay">Pay</button>
-            </div>
-        </div>
 
         <!-- VERIFICATION MODAL -->
         <div id="verify-modal" class="modal">

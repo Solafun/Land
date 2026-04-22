@@ -210,15 +210,11 @@ async function getInternalUserData(user) {
             first_name: userData.first_name,
             last_name: userData.last_name,
             username: userData.username,
-            balance: userData.balance,
-            free_spins: userData.free_spins,
-            total_spins: userData.total_spins,
-            total_deposited: userData.total_deposited,
             threads_username: userData.threads_username || null,
             threads_verified: userData.threads_verified || false,
-            threads_star_balance: userData.threads_star_balance || 0,
             verification_code: userData.verification_code || null,
             verification_status: userData.verification_status || 'none',
+            country: userData.country || null,
             is_blocked: userData.is_blocked || false,
             app_mode: appMode
         },
@@ -1009,10 +1005,23 @@ async function updateLocation(req, res, user) {
     if (lat === undefined || lng === undefined) return res.status(400).json({ success: false, error: 'Coordinates required' });
 
     try {
+        // Fetch country name via reverse geocoding
+        let country = null;
+        try {
+            const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+            if (geoRes.ok) {
+                const geoData = await geoRes.json();
+                country = geoData.countryName;
+            }
+        } catch (e) {
+            console.warn('Country lookup failed:', e.message);
+        }
+
         const { data, error } = await supabase.rpc('update_location_and_get_nearby', {
             p_user_id: user.id,
             p_lat: parseFloat(lat),
-            p_lng: parseFloat(lng)
+            p_lng: parseFloat(lng),
+            p_country: country
         });
 
         if (error) throw error;
@@ -1083,10 +1092,6 @@ module.exports = async function handler(req, res) {
         switch (action) {
             case 'init-app': return await handleInitApp(req, res, user);
             case 'init-user': return await initUser(req, res, user);
-            case 'spin-wheel': return await spinWheel(req, res, user);
-            case 'spin-paid': return await spinPaid(req, res, user);
-            case 'create-invoice': return await createInvoice(req, res, user);
-            case 'check-payment': return await checkPayment(req, res, user);
             case 'search-threads': return await searchThreads(req, res, user);
             case 'add-participant': return await addParticipant(req, res, user);
             case 'toggle-subscription': return await toggleSubscription(req, res, user);
@@ -1094,9 +1099,6 @@ module.exports = async function handler(req, res) {
             case 'start-verification': return await startVerification(req, res, user);
             case 'check-verification': return await checkVerification(req, res, user);
             case 'disconnect-threads': return await disconnectThreads(req, res, user);
-            case 'get-challenges': return await getChallenges(req, res, user);
-            case 'join-challenge': return await joinChallenge(req, res, user);
-            case 'resolve-gamble': return await resolveGambleChallenge(req, res, user);
             case 'update-location': return await updateLocation(req, res, user);
             case 'get-map-users': return await getMapPoints(req, res, user);
             default:

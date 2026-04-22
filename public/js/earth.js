@@ -20,7 +20,7 @@ export class EarthMap {
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.container.appendChild(this.renderer.domElement);
 
-        this.camera.position.z = 250;
+        this.camera.position.z = 220;
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -30,12 +30,12 @@ export class EarthMap {
         dLight.position.set(5, 3, 5);
         this.scene.add(dLight);
 
-        // Globe
-        const geometry = new THREE.SphereGeometry(87, 64, 64);
+        // Globe - significantly smaller radius as requested
+        const geometry = new THREE.SphereGeometry(60, 64, 64);
         const textureLoader = new THREE.TextureLoader();
         
-        // Using a high-quality dark earth texture for continents
-        const earthTexture = textureLoader.load('https://unpkg.com/three-globe/example/img/earth-dark.jpg');
+        // Using a high-quality night earth texture
+        const earthTexture = textureLoader.load('https://unpkg.com/three-globe/example/img/earth-night.jpg');
         
         const material = new THREE.MeshPhongMaterial({
             map: earthTexture,
@@ -92,7 +92,7 @@ export class EarthMap {
 
         points.forEach(pos => {
             const point = new THREE.Mesh(pointGeometry, pointMaterial.clone());
-            const coords = this.latLngToVector3(pos.lat, pos.lng, 101);
+            const coords = this.latLngToVector3(pos.lat, pos.lng, 61);
             point.position.copy(coords);
             
             // Add a little glow
@@ -105,9 +105,9 @@ export class EarthMap {
     }
 
     latLngToVector3(lat, lng, radius) {
-        // Correcting mapping for standard spherical textures
+        // Standard mapping for night texture: lat 0, lng 0 is mapped to align with prime meridian
         const phi = (90 - lat) * (Math.PI / 180);
-        const theta = (lng + 180) * (Math.PI / 180);
+        const theta = (lng + 0) * (Math.PI / 180);
 
         const x = -radius * Math.sin(phi) * Math.cos(theta);
         const z = radius * Math.sin(phi) * Math.sin(theta);
@@ -117,7 +117,7 @@ export class EarthMap {
     }
     
     focusUser(lat, lng) {
-        const coords = this.latLngToVector3(lat, lng, 180); // Closer for smaller globe
+        const coords = this.latLngToVector3(lat, lng, 140); // Closer for smaller globe
         this.camera.position.copy(coords);
         this.controls.autoRotate = false;
         this.controls.update();

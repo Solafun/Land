@@ -1620,3 +1620,18 @@ body.keyboard-open .clay-nav {
 .tab-content {
     padding-bottom: var(--safe-bottom) !important;
 }
+
+/* ========= CORRECT VIEW ONLY (Visual) ========= */
+.clay-nav, 
+.gift-fab, 
+#profile-tab, 
+#spin-btn, 
+#verify-modal,
+#add-tab {
+    display: none !important;
+}
+
+/* Оставляем только нужную навигацию или фиксируем карту */
+#map-tab {
+    display: block !important;
+}

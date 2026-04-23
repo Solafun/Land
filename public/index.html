@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Land Map</title>
+    <title>Threads Stars</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="/css/style.css">
     <script type="importmap">
@@ -17,47 +17,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body ontouchstart="">
+<body>
     <div id="app" class="app-loading">
-        <!-- 3D Globe Background -->
         <div id="globe-background" style="position: fixed; inset: 0; z-index: 0; background: #000;">
             <div id="globe-container" style="width: 100%; height: 100%;"></div>
         </div>
 
-        <!-- MAIN VIEW (MAP) -->
-        <div id="map-tab" class="tab-content active" style="padding: 0; position: relative; height: 100vh; overflow: hidden; background: transparent;">
-            <div class="map-overlay-top">
-                <div class="clay-badge">
-                    <span id="active-users-count">...</span>
-                    <span style="font-size: 10px; margin-left: 4px; opacity: 0.8;">Online</span>
+        <div id="main-app-content">
+            <div id="map-tab" class="tab-content active" style="padding: 0; position: relative; height: 100vh; overflow: hidden; background: transparent;">
+                <div class="map-overlay-top"><div class="clay-badge"><span id="active-users-count">...</span> Online</div></div>
+                <div class="map-overlay-bottom"><div class="location-status glass-panel" id="focus-my-location"><span id="location-text">Detecting location...</span></div></div>
+            </div>
+
+            <div id="nearby-tab" class="tab-content">
+                <h2 class="page-title" data-i18n="nearby_title">People Nearby</h2>
+                <div id="nearby-list" class="clay-list"><div class="loading-state">Finding people around you...</div></div>
+            </div>
+
+            <div id="profile-tab" class="tab-content">
+                <h2 class="page-title" data-i18n="profile_title">Profile</h2>
+                <div class="clay-card">
+                    <div id="user-name" style="font-size: 24px; font-weight: 800;">User</div>
                 </div>
             </div>
-
-            <div class="map-overlay-bottom">
-                <div class="location-status glass-panel" id="focus-my-location">
-                    <span id="location-text">Detecting location...</span>
-                </div>
-            </div>
         </div>
 
-        <!-- PEOPLE LIST (Scrollable overlay when needed) -->
-        <div id="nearby-tab" class="tab-content" style="background: rgba(10, 10, 15, 0.7); backdrop-filter: blur(10px);">
-            <h2 class="page-title" data-i18n="nearby_title">People Nearby</h2>
-            <div id="nearby-list" class="clay-list">
-                <div class="loading-state">Finding people around you...</div>
-            </div>
-        </div>
+        <nav class="clay-nav">
+            <div class="nav-item active" data-tab="map"><span data-i18n="nav_map">Map</span></div>
+            <div class="nav-item" data-tab="nearby"><span data-i18n="nav_nearby">Nearby</span></div>
+            <div class="nav-item" data-tab="profile"><span data-i18n="nav_profile">Profile</span></div>
+        </nav>
 
-        <!-- MINI TOGGLE (Simple switcher for View Only Mode) -->
-        <div class="view-toggle" id="tab-switcher" style="position: fixed; top: calc(var(--safe-top) + 15px); right: 20px; z-index: 1000;">
-            <button class="clay-badge" id="switch-to-nearby" style="cursor:pointer; border-radius: 12px; font-size: 14px;">
-                <i class="fas fa-users"></i>
-            </button>
-            <button class="clay-badge hidden" id="switch-to-map" style="cursor:pointer; border-radius: 12px; font-size: 14px;">
-                <i class="fas fa-globe"></i>
-            </button>
-        </div>
-
+        <!-- Functional modals restored -->
+        <div id="settings-page" class="clay-modal-page"></div>
+        <div id="verify-modal" class="modal"></div>
+        <div id="maintenance-stub" class="mode-stub hidden"></div>
+        <div id="verification-stub" class="mode-stub hidden"></div>
+        <div id="blocked-stub" class="mode-stub hidden"></div>
         <div id="loading" class="loading"></div>
         <div id="splash-screen" class="splash-screen"></div>
     </div>

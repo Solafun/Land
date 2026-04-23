@@ -1031,14 +1031,19 @@ async function updateLocation(req, res, user) {
             p_country: country
         });
 
-        if (error) throw error;
+        if (error) {
+            console.error('RPC update_location_and_get_nearby error:', error);
+            throw error;
+        }
+
+        const userData = await getInternalUserData(user);
 
         // Fetch all active users with locations for the globe dots
         const { data: pointsRes } = await supabase
             .from('users')
             .select('id, location')
             .not('location', 'is', null)
-            .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+            .limit(200);
 
         const points = (pointsRes || []).map(u => ({
             id: u.id,
@@ -1048,6 +1053,7 @@ async function updateLocation(req, res, user) {
 
         return res.status(200).json({
             success: true,
+            user: userData, // Merged init info
             nearby: data,
             points,
             country
@@ -1068,7 +1074,8 @@ async function getMapPoints(req, res, user) {
             .from('users')
             .select('id, location')
             .not('location', 'is', null)
-            .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+            .limit(100);
+            // Relaxed filter to ensure points appear
 
         const points = (pointsRes || []).map(u => ({
             id: u.id,

@@ -557,12 +557,12 @@ const App = {
             const dist = this.formatDistance(meters);
 
             el.innerHTML = `
-                <div class="leaderboard-item-link" onclick="App.viewNearbyUser('${user.username || user.id}')">
+                <div class="leaderboard-item-link" onclick="App.viewNearbyUser('${user.threads_username || user.id}')">
                     <div class="item-avatar">
-                        ${user.avatar_url ? `<img src="${user.avatar_url}" />` : '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'}
+                        ${(user.threads_avatar_url) ? `<img src="${user.threads_avatar_url}" />` : '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'}
                     </div>
                     <div class="item-info">
-                        <div class="item-nick">@${user.username || 'user'} ${user.first_name ? `(${user.first_name})` : ''}</div>
+                        <div class="item-nick">@${user.threads_username || 'user'}</div>
                         <div class="distance-badge">${dist}</div>
                     </div>
                     <div class="item-rank">
@@ -1233,27 +1233,7 @@ const App = {
         // Handled by I18n.apply() called within I18n.setLanguage()
     },
 
-    async disconnectThreads() {
-        if (!confirm(I18n.t('threads_disconnect_confirm'))) return;
-        TelegramApp.haptic('impact');
-        this.showLoading(true);
-        try {
-            const res = await this.apiRequest('disconnect-threads');
-            if (res.success) {
-                this.showToast(I18n.t('threads_disconnected_toast'), 'warning');
-                if (this.userData) {
-                    this.userData.threads_verified = false;
-                    this.userData.threads_username = null;
-                    this.updateProfileVerificationUI(this.userData);
-                }
-                this.closeSettings();
-            }
-        } catch (e) {
-            this.showToast(e.message, 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    },
+
 
     copyToClipboard(text) {
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1283,185 +1263,7 @@ const App = {
         document.body.removeChild(textArea);
     },
 
-    openVerifyModal() {
-        TelegramApp.haptic('impact');
-        const modal = document.getElementById('verify-modal');
-        if (!modal) return;
 
-        // Reset to step 1
-        this.verifyState = { step: 1, nickname: '', code: '' };
-        document.getElementById('verify-step-1').classList.remove('hidden');
-        document.getElementById('verify-step-2').classList.add('hidden');
-        document.getElementById('verify-step-3').classList.add('hidden');
-        document.getElementById('verify-nick-input').value = '';
-        document.getElementById('verify-search-result').textContent = '';
-        document.getElementById('verify-check-result').textContent = '';
-
-        // Pre-fill if user already has a pending threads_username
-        if (this.userData?.threads_username && !this.userData?.threads_verified) {
-            document.getElementById('verify-nick-input').value = this.userData.threads_username;
-        }
-
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    },
-
-    initStandaloneVerify() {
-        const container = document.getElementById('verify-only-standalone-container');
-        if (!container) return;
-
-        // Reset steps
-        document.getElementById('vo-step-1').classList.remove('hidden');
-        document.getElementById('vo-step-2').classList.add('hidden');
-        document.getElementById('vo-nick-input').value = this.userData?.threads_username || '';
-        document.getElementById('vo-search-result').textContent = '';
-        document.getElementById('vo-check-result').textContent = '';
-        document.getElementById('vo-publish-btn')?.classList.remove('hidden');
-        document.getElementById('vo-check-btn')?.classList.add('hidden');
-    },
-
-    closeVerifyModal() {
-        document.getElementById('verify-modal')?.classList.remove('active');
-        document.body.style.overflow = '';
-    },
-
-    async searchThreadsForVerify(isStandalone = false) {
-        const prefix = isStandalone ? 'vo-' : 'verify-';
-        const input = document.getElementById(`${prefix}nick-input`);
-        const btn = document.getElementById(`${prefix}search-btn`);
-        const resultEl = document.getElementById(`${prefix}search-result`);
-        const nickname = input.value.trim().toLowerCase();
-
-        if (!nickname) {
-            this.showToast(I18n.t('error_enter_nickname'), 'info');
-            return;
-        }
-
-        resultEl.textContent = I18n.t('verify_searching');
-        resultEl.style.color = 'var(--text-mutted)';
-
-        try {
-            const data = await this.apiRequest('start-verification', { nickname });
-            if (data.success) {
-                // Move to step 2
-                this.verifyState = { step: 2, nickname: data.threads_username, code: data.code };
-                resultEl.textContent = '';
-                const nickLabel = document.getElementById(`${prefix}found-nick-label`);
-                if (nickLabel) nickLabel.textContent = I18n.t('verify_step_2_found', { nick: data.threads_username });
-                document.getElementById(`${prefix}code-display`).textContent = data.code;
-
-                // Show post preview if it exists in the UI (modal only)
-                const preview = document.getElementById(`${prefix}post-preview`);
-                if (preview) {
-                    const postText = I18n.t('verify_post_text', { code: data.code });
-                    preview.textContent = postText;
-                }
-
-                document.getElementById(`${prefix}step-1`).classList.add('hidden');
-                document.getElementById(`${prefix}step-2`).classList.remove('hidden');
-            } else if (data.error === 'already_claimed') {
-                resultEl.textContent = I18n.t('verify_error_claimed');
-                resultEl.style.color = '#ef4444';
-            } else if (data.error === 'no_threads_profile') {
-                resultEl.textContent = I18n.t('verify_error_not_found');
-                resultEl.style.color = '#ef4444';
-            } else {
-                resultEl.textContent = I18n.t('verify_error_generic');
-                resultEl.style.color = '#ef4444';
-            }
-        } catch (e) {
-            resultEl.textContent = I18n.t('verify_error_connection');
-            resultEl.style.color = '#ef4444';
-        }
-    },
-
-    openThreadsPublish(isStandalone = false) {
-        TelegramApp.haptic('impact');
-        const code = this.verifyState.code;
-        if (!code) return;
-
-        const postText = encodeURIComponent(I18n.t('verify_post_text', { code }));
-        const threadsUrl = `https://www.threads.com/intent/post?text=${postText}`;
-
-        this.openThreadsUrl(threadsUrl);
-
-        // After a short delay, show check button (either move to step 3 in modal or swap buttons in standalone)
-        setTimeout(() => {
-            if (isStandalone) {
-                document.getElementById('vo-publish-btn')?.classList.add('hidden');
-                document.getElementById('vo-check-btn')?.classList.remove('hidden');
-            } else {
-                document.getElementById('verify-step-2')?.classList.add('hidden');
-                document.getElementById('verify-step-3')?.classList.remove('hidden');
-            }
-            this.verifyState.step = 3;
-        }, 1500);
-    },
-
-    async checkVerification(isStandalone = false) {
-        const prefix = isStandalone ? 'vo-' : 'verify-';
-        const btn = document.getElementById(`${prefix}check-btn`);
-        const resultEl = document.getElementById(`${prefix}check-result`);
-        if (!btn) return;
-
-        btn.disabled = true;
-        btn.innerHTML = `
-            <svg class="clay-spinner" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path></svg>
-            <span>${I18n.t('verify_checking')}</span>
-        `;
-        resultEl.textContent = '';
-
-        try {
-            const data = await this.apiRequest('check-verification', {});
-            if (data.success && data.verified) {
-                TelegramApp.haptic('success');
-                resultEl.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        <span>${I18n.t('verify_success')}</span>
-                    </div>
-                `;
-                resultEl.style.color = '#10b981';
-
-                // Update local user data
-                if (this.userData) {
-                    this.userData.threads_verified = true;
-                    this.userData.threads_username = this.verifyState.nickname;
-                    this.userData.threads_star_balance = this.userData.threads_star_balance || 0;
-                    this.updateProfileVerificationUI(this.userData);
-                }
-
-                if (this.appMode === 'verify_only') {
-                    // Re-fetch user data — backend now returns app_mode='active' for verified users
-                    setTimeout(async () => {
-                        await this.loadInitialData();
-                        if (this.userData?.app_mode === 'active') {
-                            this.setAppMode('active');
-                        } else {
-                            this.showVerificationOnlySuccess();
-                        }
-                    }, 1500);
-                }
-
-                setTimeout(() => this.closeVerifyModal(), 2000);
-            } else {
-                resultEl.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        <span>${I18n.t('verify_error_no_code')}</span>
-                    </div>
-                `;
-                resultEl.style.color = '#ef4444';
-                btn.disabled = false;
-                btn.textContent = I18n.t('verify_step_3_check_btn');
-            }
-        } catch (e) {
-            resultEl.textContent = I18n.t('verify_error_connection');
-            resultEl.style.color = '#ef4444';
-            btn.disabled = false;
-            btn.textContent = I18n.t('verify_step_3_check_btn');
-        }
-    },
 
     // ============================================
     // CHALLENGES

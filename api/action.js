@@ -243,6 +243,7 @@ async function handleInitApp(req, res, user) {
     }
 }
 
+
 async function initUser(req, res, user) {
     try {
         const data = await getInternalUserData(user);
@@ -425,6 +426,30 @@ async function searchThreads(req, res, user) {
 
     if (threadResult.exists) return res.status(200).json({ success: true, found: true, already_exists: false, nickname: clean, avatar_url: threadResult.avatar });
     return res.status(200).json({ success: true, found: false, nickname: clean });
+}
+
+async function getUserProfile(req, res, user) {
+    const { username } = req.body;
+    const clean = username.replace(/^@/, '').trim().toLowerCase();
+
+    // Search in users table by threads_username or telegram username as fallback
+    const { data: userData } = await supabase
+        .from('users')
+        .select('id, username, threads_username, threads_avatar_url, threads_verified')
+        .or(`threads_username.eq.${clean},username.eq.${clean}`)
+        .single();
+
+    if (!userData) return res.status(200).json({ success: false, error: 'User not found' });
+
+    return res.status(200).json({
+        success: true,
+        user: {
+            id: userData.id,
+            nickname: userData.threads_username || userData.username,
+            avatar_url: userData.threads_avatar_url,
+            verified: userData.threads_verified
+        }
+    });
 }
 
 async function addParticipant(req, res, user) {
@@ -969,13 +994,20 @@ async function updateLocation(req, res, user) {
         console.log(`Points count: ${points.length}, user.id: ${user.id}`);
 
         // RPC returns { success, country, nearby: [...] } — extract the array
-        const nearbyUsers = data?.nearby || data || [];
-        console.log(`Nearby users count: ${Array.isArray(nearbyUsers) ? nearbyUsers.length : 'not array'}`);
+        const nearbyUsersRaw = data?.nearby || data || [];
+        const nearby = (Array.isArray(nearbyUsersRaw) ? nearbyUsersRaw : []).map(u => ({
+            id: u.id,
+            threads_username: u.threads_username,
+            threads_avatar_url: u.threads_avatar_url,
+            distance_meters: u.distance_meters,
+            lat: u.lat,
+            lng: u.lng
+        }));
 
         return res.status(200).json({
             success: true,
             userId: user.id,
-            nearby: Array.isArray(nearbyUsers) ? nearbyUsers : [],
+            nearby,
             points,
             country
         });

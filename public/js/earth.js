@@ -151,8 +151,12 @@ export class EarthMap {
             const sprite = new THREE.Sprite(spriteMaterial);
             sprite.scale.set(isMe ? 6 : 4, isMe ? 6 : 4, 1);
             
-            const coords = this.latLngToVector3(pos.lat, pos.lng, isMe ? 60.7 : 60.3);
+            const coords = this.latLngToVector3(pos.lat, pos.lng, isMe ? 62.7 : 62.3);
             sprite.position.copy(coords);
+            sprite.userData = { 
+                id: pos.id,
+                nickname: pos.nickname
+            };
             this.globe.add(sprite);
             this.points.push(sprite);
         });

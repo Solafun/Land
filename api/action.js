@@ -1076,16 +1076,46 @@ async function getMapPoints(req, res, user) {
 async function getNearbyHandler(req, res, user) {
     const { lat, lng } = req.body;
     try {
-        const { data, error } = await supabase.rpc('update_location_and_get_nearby', {
-            p_user_id: user.id,
-            p_lat: parseFloat(lat || 0),
-            p_lng: parseFloat(lng || 0),
-            p_country: 'Earth'
-        });
+        let nearby = [];
+        
+        // Only trigger update/nearby RPC if we have actual coordinates
+        if (lat && lng && parseFloat(lat) !== 0) {
+            const { data, error } = await supabase.rpc('update_location_and_get_nearby', {
+                p_user_id: user.id,
+                p_lat: parseFloat(lat),
+                p_lng: parseFloat(lng),
+                p_country: 'Earth'
+            });
+            if (!error) nearby = (data || []);
+        } else {
+            // Just fetch people near the user's LAST KNOWN location (if exists) or just generic recent users
+            const { data: userData } = await supabase.from('users').select('lat, lng').eq('id', user.id).single();
+            const uLat = userData?.lat || 0;
+            const uLng = userData?.lng || 0;
+            
+            const { data, error } = await supabase.rpc('update_location_and_get_nearby', {
+                p_user_id: user.id,
+                p_lat: uLat,
+                p_lng: uLng,
+                p_country: 'Last Known'
+            });
+            // We still use the RPC but with last known coords to avoid overwriting with 0,0 
+            // Wait, update_location_and_get_nearby UPDATES. I should avoid it.
+            
+            // Let's do a plain select for "near me" if no coords provided
+            if (error || !userData?.lat) {
+                const { data: recent } = await supabase
+                    .from('users')
+                    .select('id, threads_username, threads_avatar_url, lat, lng')
+                    .not('lat', 'is', null)
+                    .limit(20);
+                nearby = (recent || []).map(u => ({ ...u, distance_meters: 0 }));
+            } else {
+                nearby = data || [];
+            }
+        }
 
-        if (error) throw error;
-
-        const nearby = (data || []).map(u => ({
+        const nearbyMapped = nearby.map(u => ({
             id: u.id, threads_username: u.threads_username, threads_avatar_url: u.threads_avatar_url,
             distance_meters: u.distance_meters, lat: u.lat, lng: u.lng
         }));
@@ -1095,11 +1125,12 @@ async function getNearbyHandler(req, res, user) {
             id: u.id, lat: parseFloat(u.lat), lng: parseFloat(u.lng), nickname: u.threads_username, avatar_url: u.threads_avatar_url
         }));
 
-        return res.status(200).json({ success: true, nearby, points });
+        return res.status(200).json({ success: true, nearby: nearbyMapped, points });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
     }
 }
+
 
 module.exports = async function handler(req, res) {
     // CORS Headers

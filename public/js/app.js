@@ -79,8 +79,7 @@ const App = {
         // Small delay to ensure spheres are visible then hide splash
         setTimeout(() => this.hideSplashScreen(), 500);
 
-        setInterval(() => this.loadNearby(true), 30000);
-        setInterval(() => this.loadMapPoints(), 60000);
+        setInterval(() => this.loadNearby(true), 300000); // 5 mins fallback
     },
 
     hideSplashScreen() {
@@ -377,6 +376,9 @@ const App = {
     },
 
     startLocationTracking() {
+        if (this._geoStarted) return;
+        this._geoStarted = true;
+
         if (!navigator.geolocation) {
             this.showToast('Geolocation is not supported', 'warning');
             return;
@@ -455,18 +457,6 @@ const App = {
         }
     },
 
-    async loadMapPoints() {
-        try {
-            const data = await this.apiRequest('get-map-users');
-            if (data.success && this.earthMap) {
-                this.earthMap.setPoints(data.points, this.userData?.id);
-                const count = document.getElementById('active-users-count');
-                if (count) count.textContent = data.points.length;
-            }
-        } catch (e) {
-            console.error('Map update failed:', e);
-        }
-    },
 
     renderNearbyList(nearby) {
         const list = document.getElementById('nearby-list');

@@ -1046,9 +1046,10 @@ async function updateLocation(req, res, user) {
         }));
 
         return res.status(200).json({
-            ...(data || {}),
             success: true,
-            points
+            nearby: data,
+            points,
+            country
         });
     } catch (error) {
         console.error('updateLocation error:', error);
@@ -1060,7 +1061,27 @@ async function getMapPoints(req, res, user) {
     try {
         const { data, error } = await supabase.rpc('get_map_users');
         if (error) throw error;
-        return res.status(200).json(data);
+
+        // Fetch all active users with locations for the globe dots
+        const { data: pointsRes } = await supabase
+            .from('users')
+            .select('id, location')
+            .not('location', 'is', null)
+            .gte('last_active', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+        const points = (pointsRes || []).map(u => ({
+            id: u.id,
+            lat: u.location.coordinates[1],
+            lng: u.location.coordinates[0]
+        }));
+
+        // Return a combined object with success and points
+        return res.status(200).json({
+            success: true,
+            nearby: data, // RPC returns array of nearby users
+            points,
+            country
+        });
     } catch (error) {
         console.error('getMapPoints error:', error);
         return res.status(500).json({ success: false, error: 'Database error' });

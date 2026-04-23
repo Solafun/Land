@@ -150,6 +150,7 @@ export class EarthMap {
     focusUser(lat, lng) {
         const coords = this.latLngToVector3(lat, lng, 105);
         
+        // Match globe rotation
         const angle = this.globe.rotation.y;
         const cosA = Math.cos(angle);
         const sinA = Math.sin(angle);
@@ -160,5 +161,6 @@ export class EarthMap {
         this.targetCameraPos = new THREE.Vector3(rx, coords.y, rz);
         this.isFocusing = true;
         this.controls.autoRotate = false;
+        this.controls.target.set(0, 0, 0); // Ensure we rotate around center
     }
 }

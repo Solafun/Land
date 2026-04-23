@@ -11,8 +11,6 @@ const App = {
     lastNearby: [],
     nearbyLoaded: false,
     appMode: 'active',
-    currentLat: null,
-    currentLng: null,
 
     openThreadsUrl(url) {
         if (!url) return;
@@ -23,6 +21,7 @@ const App = {
         if (profileMatch && !intentMatch) {
             const username = profileMatch[1];
             const webUrl = `https://www.threads.com/@${username}`;
+
             if (window.Telegram?.WebApp?.openLink) {
                 window.Telegram.WebApp.openLink(webUrl);
             } else {
@@ -139,6 +138,31 @@ const App = {
         }
     },
 
+    showVerificationOnlySuccess() {
+        const stub = document.getElementById('verification-stub');
+        if (stub) {
+            stub.innerHTML = `
+                <div class="stub-content clay-card" style="padding-bottom: 30px;">
+                    <div class="stub-icon">
+                        <svg viewBox="0 0 24 24" width="60" height="60" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.4));">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                    </div>
+                    <h1 data-i18n="verify_success" style="margin-bottom: 10px;">${I18n.t('verify_success')}</h1>
+                    <p style="line-height: 1.4; font-size: 15px;">${I18n.t('verify_only_success')}</p>
+                </div>
+            `;
+            stub.addEventListener('click', (e) => {
+                const link = e.target.closest('.threads-link');
+                if (link) {
+                    e.preventDefault();
+                    this.openThreadsUrl('https://www.threads.com/@usemikehelp');
+                }
+            });
+        }
+    },
+
     showToast(message, type = 'info') {
         message = I18n.t(message);
         let container = document.querySelector('.toast-container');
@@ -148,23 +172,19 @@ const App = {
             document.body.appendChild(container);
         }
         const toast = document.createElement('div');
-        toast.className = 'toast';
-
-        const icons = {
-            success: '<svg class="clay-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
-            error: '<svg class="clay-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
-            warning: '<svg class="clay-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>',
-            info: '<svg class="clay-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
-        };
-
-        toast.innerHTML = `<span>${icons[type] || icons.info}</span><span>${message}</span>`;
+        toast.className = `toast`;
+        let icon = type === 'success' ?
+            '<svg class="clay-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' :
+            type === 'error' ?
+                '<svg class="clay-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>' :
+                type === 'warning' ?
+                    '<svg class="clay-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>' :
+                    '<svg class="clay-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+        toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
         container.appendChild(toast);
         requestAnimationFrame(() => toast.classList.add('show'));
         TelegramApp.haptic(type === 'error' ? 'error' : 'success');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
     },
 
     setupKeyboardDetection() {
@@ -173,23 +193,51 @@ const App = {
             window.visualViewport.addEventListener('resize', () => {
                 const isKeyboard = initialHeight - window.visualViewport.height > 100;
                 document.body.classList.toggle('keyboard-open', isKeyboard);
+                if (this.floatingAvatars) {
+                    this.floatingAvatars.setKeyboardVisible(isKeyboard);
+                }
             });
         }
         const inputs = ['INPUT', 'TEXTAREA'];
+        const update = (visible) => {
+            document.body.classList.toggle('keyboard-open', visible);
+            if (this.floatingAvatars) this.floatingAvatars.setKeyboardVisible(visible);
+        };
         document.addEventListener('focusin', (e) => {
-            if (inputs.includes(e.target.tagName)) document.body.classList.add('keyboard-open');
+            if (inputs.includes(e.target.tagName)) update(true);
         });
         document.addEventListener('focusout', (e) => {
-            if (inputs.includes(e.target.tagName)) document.body.classList.remove('keyboard-open');
+            if (inputs.includes(e.target.tagName)) update(false);
         });
     },
 
     bindEvents() {
         document.querySelectorAll('.nav-item').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.switchTab(btn.dataset.tab);
-            });
+            btn.addEventListener('click', (e) => { e.preventDefault(); this.switchTab(btn.dataset.tab); });
+        });
+
+        document.getElementById('spin-btn')?.addEventListener('click', () => this.spin());
+
+        document.querySelector('.clay-header .clay-badge')?.addEventListener('click', () => {
+            const star = document.querySelector('.clay-header .clay-star');
+            if (star) {
+                star.classList.remove('sparkle-active');
+                void star.offsetWidth;
+                star.classList.add('sparkle-active');
+                TelegramApp.haptic('impact');
+            }
+        });
+
+        document.getElementById('deposit-btn')?.addEventListener('click', () => this.showDepositModal());
+
+        document.querySelectorAll('.deposit-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.createDeposit(parseInt(btn.dataset.amount)));
+        });
+
+        document.getElementById('custom-deposit-btn')?.addEventListener('click', () => {
+            const amount = parseInt(document.getElementById('custom-deposit').value);
+            if (amount > 0 && amount <= 10000) this.createDeposit(amount);
+            else this.showToast(I18n.t('deposit_amount_error'), 'error');
         });
 
         const searchBtn = document.getElementById('search-btn');
@@ -203,7 +251,6 @@ const App = {
                 this.searchUser();
             }
         });
-
         document.getElementById('search-input')?.addEventListener('input', (e) => {
             const val = e.target.value.trim();
             if (val === '') {
@@ -214,57 +261,128 @@ const App = {
                 searchBtn.textContent = 'Go';
             }
         });
-
         document.getElementById('search-input')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') { e.target.blur(); this.searchUser(); }
         });
+
+        document.getElementById('link-threads-btn')?.addEventListener('click', () => this.openVerifyModal());
+        document.getElementById('verify-only-start-btn')?.addEventListener('click', () => this.openVerifyModal());
+        document.getElementById('verify-modal-close')?.addEventListener('click', () => this.closeVerifyModal());
+        document.getElementById('verify-modal-overlay')?.addEventListener('click', () => this.closeVerifyModal());
+        document.getElementById('verify-search-btn')?.addEventListener('click', () => this.searchThreadsForVerify());
+        document.getElementById('verify-nick-input')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.target.blur(); this.searchThreadsForVerify(); }
+        });
+        document.getElementById('verify-publish-btn')?.addEventListener('click', () => this.openThreadsPublish());
+        document.getElementById('verify-check-btn')?.addEventListener('click', () => this.checkVerification());
 
         document.getElementById('onboarding-submit-btn')?.addEventListener('click', () => this.submitOnboarding());
         document.getElementById('onboarding-nick-input')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') { e.target.blur(); this.submitOnboarding(); }
         });
 
+        document.getElementById('vo-search-btn')?.addEventListener('click', () => this.searchThreadsForVerify(true));
+        document.getElementById('vo-nick-input')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.target.blur(); this.searchThreadsForVerify(true); }
+        });
+        document.getElementById('vo-copy-btn')?.addEventListener('click', () => {
+            const code = this.verifyState.code;
+            if (code) {
+                const text = I18n.t('verify_post_text', { code });
+                this.copyToClipboard(text);
+            }
+        });
+        document.getElementById('vo-publish-btn')?.addEventListener('click', () => this.openThreadsPublish(true));
+        document.getElementById('vo-check-btn')?.addEventListener('click', () => this.checkVerification(true));
+
+        document.querySelectorAll('.modal-close').forEach(btn => {
+            if (btn.id !== 'verify-modal-close') {
+                btn.addEventListener('click', () => this.closeModals());
+            }
+        });
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            if (overlay.id !== 'verify-modal-overlay') {
+                overlay.addEventListener('click', () => this.closeModals());
+            }
+        });
+
         document.querySelectorAll('.lang-option').forEach(opt => {
             opt.addEventListener('click', () => {
                 I18n.setLanguage(opt.dataset.lang);
+                this.updateSpinButton();
                 if (this.userData) this.updateProfileUI(this.userData);
+                if (this.lastSearchResult) {
+                    const container = document.getElementById('search-result');
+                    if (container && !container.classList.contains('hidden')) {
+                        this.showSearchFound(this.lastSearchResult, container);
+                    }
+                }
                 TelegramApp.haptic('impact');
             });
         });
 
-        // Touch feedback
+        document.getElementById('disconnect-threads-btn')?.addEventListener('click', () => this.disconnectThreads());
+        document.getElementById('copy-verify-text-btn')?.addEventListener('click', () => {
+            const code = this.verifyState.code;
+            if (code) {
+                const text = I18n.t('verify_post_text', { code });
+                this.copyToClipboard(text);
+            }
+        });
+
         document.body.addEventListener('touchstart', (e) => {
             const btn = e.target.closest('button, .clay-btn, .clay-icon-btn, .nav-item, .clay-list-item, .modal-close');
-            if (btn && !btn.disabled) btn.classList.add('is-active');
+            if (btn && !btn.disabled) {
+                btn.classList.add('is-active');
+            }
         }, { passive: true });
 
         document.body.addEventListener('touchend', (e) => {
             const btn = e.target.closest('button, .clay-btn, .clay-icon-btn, .nav-item, .clay-list-item, .modal-close');
-            if (btn) btn.classList.remove('is-active');
+            if (btn) {
+                btn.classList.remove('is-active');
+            }
 
             const isInput = e.target.closest('input, textarea');
             const isInteractive = e.target.closest('button, .clay-btn, .clay-icon-btn, .nav-item, [onclick], a');
-            if (!isInput && !isInteractive && document.activeElement &&
-                (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+
+            if (!isInput && !isInteractive && document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
                 document.activeElement.blur();
             }
         }, { passive: true });
 
-        document.body.addEventListener('touchcancel', () => {
+        document.body.addEventListener('touchcancel', (e) => {
             document.querySelectorAll('.is-active').forEach(el => el.classList.remove('is-active'));
         }, { passive: true });
+    },
+
+    openSettings() {
+        TelegramApp.haptic('impact');
+        const page = document.getElementById('settings-page');
+        if (page) {
+            page.style.display = 'flex';
+            setTimeout(() => page.classList.add('active'), 10);
+            TelegramApp.showBackButton(() => this.closeSettings());
+        }
+    },
+
+    closeSettings() {
+        const page = document.getElementById('settings-page');
+        if (page) {
+            page.classList.remove('active');
+            setTimeout(() => page.style.display = 'none', 400);
+        }
+        TelegramApp.hideBackButton();
     },
 
     switchTab(tabId) {
         TelegramApp.haptic('impact');
         document.activeElement?.blur();
         document.body.classList.remove('keyboard-open');
+        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
 
-        document.querySelectorAll('.nav-item').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tabId);
-        });
-
-        document.querySelectorAll('.tab-content').forEach(tab => {
+        const tabs = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => {
             const isActive = tab.id === `${tabId}-tab`;
             tab.classList.toggle('active', isActive);
             if (isActive) {
@@ -274,7 +392,8 @@ const App = {
 
         this.currentTab = tabId;
 
-        if (tabId === 'nearby') this.loadNearby(!this.nearbyLoaded ? false : true);
+        if (tabId === 'nearby' && !this.nearbyLoaded) this.loadNearby();
+        else if (tabId === 'nearby') this.loadNearby(true);
 
         const globeBg = document.getElementById('globe-background');
         if (globeBg) {
@@ -283,129 +402,107 @@ const App = {
     },
 
     // ============================================
-    // GEOLOCATION — полностью переписано
+    // FIX: startLocationTracking
+    // Добавлен requestAccess для Telegram LocationManager
+    // и защита от нулевых координат перед отправкой на сервер
     // ============================================
     startLocationTracking() {
         if (this._geoStarted) return;
         this._geoStarted = true;
 
-        console.log('[GEO] Starting location tracking...');
-
+        // FIX: Проверяем координаты перед отправкой — не отправляем нули
         const update = (lat, lng, source) => {
-            const parsedLat = Number(lat);
-            const parsedLng = Number(lng);
+            const parsedLat = parseFloat(lat);
+            const parsedLng = parseFloat(lng);
 
-            if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
-                console.warn(`[GEO] Invalid coordinates from ${source}:`, lat, lng);
+            if (isNaN(parsedLat) || isNaN(parsedLng)) {
+                console.warn(`[GEO] Skipping NaN coordinates from ${source}`);
                 return;
             }
-
             if (parsedLat === 0 && parsedLng === 0) {
-                console.warn(`[GEO] Zero coordinates from ${source}, skipping`);
+                console.warn(`[GEO] Skipping zero coordinates from ${source}`);
                 return;
             }
 
-            console.log(`[GEO] Got location via ${source}: ${parsedLat}, ${parsedLng}`);
+            console.log(`[GEO] SUCCESS via ${source}: ${parsedLat}, ${parsedLng}`);
             this.updateUserLocation(parsedLat, parsedLng);
         };
 
         const tryBrowser = (reason) => {
-            console.log(`[GEO] Browser fallback. Reason: ${reason}`);
-
-            if (!navigator.geolocation) {
+            console.log(`[GEO] Trying browser geolocation (Reason: ${reason})...`);
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (p) => update(p.coords.latitude, p.coords.longitude, 'Browser'),
+                    (err) => {
+                        console.error('[GEO] Browser geolocation failed:', err.code, err.message);
+                        const locText = document.getElementById('location-text');
+                        if (locText) locText.textContent = 'Location denied';
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                );
+            } else {
                 console.warn('[GEO] navigator.geolocation not available');
                 const locText = document.getElementById('location-text');
                 if (locText) locText.textContent = 'Location not supported';
-                return;
             }
-
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    console.log('[GEO] Browser position received');
-                    update(pos.coords.latitude, pos.coords.longitude, 'Browser');
-                },
-                (err) => {
-                    console.error('[GEO] Browser geolocation error:', err.code, err.message);
-                    const locText = document.getElementById('location-text');
-                    if (locText) locText.textContent = 'Location denied';
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 0
-                }
-            );
         };
 
-        // Try Telegram LocationManager first
         const T = window.Telegram?.WebApp;
-        const lm = T?.LocationManager;
 
-        if (lm && typeof lm.init === 'function' && typeof lm.getLocation === 'function' && T?.isVersionAtLeast?.('8.0')) {
-            console.log('[GEO] Telegram LocationManager detected');
+        // Use Telegram as primary if available
+        if (T?.LocationManager) {
+            console.log('[GEO] Using Telegram LocationManager...');
+            const lm = T.LocationManager;
 
-            const doGetLocation = () => {
-                try {
-                    lm.getLocation((data) => {
-                        if (data && data.latitude != null && data.longitude != null) {
-                            update(data.latitude, data.longitude, 'Telegram LocationManager');
-                        } else {
-                            console.warn('[GEO] Telegram returned empty location data:', data);
-                            tryBrowser('Telegram returned empty data');
-                        }
-                    });
-                } catch (e) {
-                    console.error('[GEO] Telegram getLocation exception:', e);
-                    tryBrowser('Telegram getLocation exception');
-                }
+            let telegramResolved = false;
+
+            const startSearch = () => {
+                lm.getLocation((data) => {
+                    if (telegramResolved) return;
+                    telegramResolved = true;
+                    if (data && data.latitude != null && data.longitude != null) {
+                        update(data.latitude, data.longitude, 'Telegram');
+                    } else {
+                        console.warn('[GEO] Telegram LocationManager returned empty data');
+                        tryBrowser('Telegram returned empty');
+                    }
+                });
             };
 
-            try {
-                if (!lm.isInited) {
-                    console.log('[GEO] Initializing Telegram LocationManager...');
-                    lm.init(() => {
-                        console.log('[GEO] Telegram LocationManager initialized');
-                        doGetLocation();
-                    });
-                } else {
-                    doGetLocation();
-                }
-            } catch (e) {
-                console.error('[GEO] Telegram LocationManager init error:', e);
-                tryBrowser('Telegram init exception');
+            if (!lm.isInited) {
+                if (lm.init) lm.init(); 
+                setTimeout(startSearch, 500); 
+            } else {
+                startSearch();
             }
+
+            // Timeout fallback
+            setTimeout(() => {
+                if (!telegramResolved && !this.currentLat) {
+                    telegramResolved = true;
+                    console.warn('[GEO] Telegram LocationManager timed out, falling back to browser...');
+                    tryBrowser('Telegram timeout');
+                }
+            }, 3000);
+
         } else {
-            tryBrowser(T ? 'Telegram version < 8.0 or no LocationManager' : 'No Telegram WebApp');
+            tryBrowser('Telegram WebApp not available');
         }
     },
 
     async updateUserLocation(lat, lng) {
-        const parsedLat = Number(lat);
-        const parsedLng = Number(lng);
+        this.currentLat = lat;
+        this.currentLng = lng;
 
-        if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
-            console.warn('[updateUserLocation] Invalid coordinates:', lat, lng);
+        // FIX: Дополнительная защита — не отправляем нули на сервер
+        if (!lat || !lng || (lat === 0 && lng === 0)) {
+            console.warn('[updateUserLocation] Skipping zero/null coordinates');
             return;
         }
-
-        if (parsedLat === 0 && parsedLng === 0) {
-            console.warn('[updateUserLocation] Rejecting zero coordinates');
-            return;
-        }
-
-        this.currentLat = parsedLat;
-        this.currentLng = parsedLng;
-
-        console.log(`[updateUserLocation] Sending to server: ${parsedLat}, ${parsedLng}`);
 
         try {
-            const data = await this.apiRequest('update-location', {
-                lat: parsedLat,
-                lng: parsedLng
-            });
-
-            console.log('[updateUserLocation] Server response:', data?.success, data?.country);
-
+            const data = await this.apiRequest('update-location', { lat, lng });
+            console.log('Location update response:', data);
             if (data.success) {
                 const locText = document.getElementById('location-text');
                 const profLocText = document.getElementById('profile-location-text');
@@ -413,13 +510,16 @@ const App = {
                 if (data.country) {
                     if (locText) locText.textContent = `Location: ${data.country}`;
                     if (profLocText) profLocText.textContent = data.country;
+                } else if (data.city) {
+                    if (locText) locText.textContent = `Location: ${data.city}`;
+                    if (profLocText) profLocText.textContent = data.city;
                 }
 
                 if (data.nearby) this.renderNearbyList(data.nearby);
 
                 const myId = data.userId || this.userData?.id;
                 if (data.points && this.earthMap) {
-                    console.log(`[updateUserLocation] Setting ${data.points.length} points on map`);
+                    console.log(`Setting ${data.points.length} points, myId=${myId}`);
                     this.earthMap.setPoints(data.points, myId);
                 }
 
@@ -428,7 +528,6 @@ const App = {
                     count.textContent = data.points.length;
                 }
 
-                // Bind click on location status to focus map
                 const statusPanel = document.querySelector('.location-status');
                 if (statusPanel && !statusPanel.dataset.bound) {
                     statusPanel.style.cursor = 'pointer';
@@ -437,31 +536,25 @@ const App = {
                             this.earthMap.focusUser(this.currentLat, this.currentLng);
                         }
                     });
-                    statusPanel.dataset.bound = 'true';
+                    statusPanel.dataset.bound = "true";
                 }
             }
         } catch (e) {
-            console.error('[updateUserLocation] Failed:', e);
+            console.error('Failed to update location:', e);
         }
     },
 
     async loadNearby(silent = false) {
         if (!silent) {
             const list = document.getElementById('nearby-list');
-            if (list) list.innerHTML = '<div class="loading-state">Finding people around you...</div>';
+            if (list) list.innerHTML = `<div class="loading-state">Finding people around you...</div>`;
         }
 
         try {
-            const hasCoords = (
-                Number.isFinite(this.currentLat) &&
-                Number.isFinite(this.currentLng) &&
-                !(this.currentLat === 0 && this.currentLng === 0)
-            );
-
-            const lat = hasCoords ? this.currentLat : null;
-            const lng = hasCoords ? this.currentLng : null;
-
-            console.log(`[loadNearby] hasCoords=${hasCoords}, lat=${lat}, lng=${lng}`);
+            // FIX: Передаём null если координаты не определены или нулевые,
+            // чтобы сервер не перезаписывал базу нулями
+            const lat = (this.currentLat && this.currentLat !== 0) ? this.currentLat : null;
+            const lng = (this.currentLng && this.currentLng !== 0) ? this.currentLng : null;
 
             const data = await this.apiRequest('get-nearby', { lat, lng });
 
@@ -475,7 +568,7 @@ const App = {
             console.error('Failed to load nearby:', error);
             if (!silent) {
                 const list = document.getElementById('nearby-list');
-                if (list) list.innerHTML = '<div class="empty-state">Unable to load people</div>';
+                if (list) list.innerHTML = `<div class="empty-state">Unable to load people</div>`;
             }
         }
     },
@@ -488,6 +581,7 @@ const App = {
         this.nearbyLoaded = true;
 
         if (!Array.isArray(nearby)) {
+            console.warn('Nearby data is not an array:', nearby);
             list.innerHTML = `<div class="empty-state">${I18n.t('no_users_nearby')}</div>`;
             return;
         }
@@ -499,33 +593,31 @@ const App = {
 
         list.innerHTML = '';
         const fragment = document.createDocumentFragment();
-
         nearby.forEach(user => {
             const el = document.createElement('div');
             el.className = 'clay-list-item';
 
             let meters = user.distance_meters;
-            if (meters === undefined || meters === null) {
-                meters = user.distance || user.dist || user.proximity;
-            }
+            if (meters === undefined || meters === null) meters = user.distance || user.dist || user.proximity;
             if ((meters === undefined || meters === null) && user.distance_km !== undefined) {
                 meters = user.distance_km * 1000;
             }
 
-            // Client-side distance calculation if server didn't provide it
-            const userLat = user.lat || user.latitude;
-            const userLng = user.lng || user.longitude;
-
+            // FIX: Клиентский расчёт дистанции только если у обоих пользователей есть ненулевые координаты
             if (
                 (meters === undefined || meters === null || isNaN(meters)) &&
-                Number.isFinite(this.currentLat) &&
-                Number.isFinite(this.currentLng) &&
-                !(this.currentLat === 0 && this.currentLng === 0) &&
-                Number.isFinite(userLat) &&
-                Number.isFinite(userLng) &&
-                !(userLat === 0 && userLng === 0)
+                this.currentLat && this.currentLng &&
+                this.currentLat !== 0 && this.currentLng !== 0 &&
+                (user.lat || user.latitude) &&
+                (user.lng || user.longitude) &&
+                (user.lat || user.latitude) !== 0 &&
+                (user.lng || user.longitude) !== 0
             ) {
-                meters = this.getDistance(this.currentLat, this.currentLng, userLat, userLng);
+                meters = this.getDistance(
+                    this.currentLat, this.currentLng,
+                    user.lat || user.latitude,
+                    user.lng || user.longitude
+                );
             }
 
             const dist = this.formatDistance(meters);
@@ -533,10 +625,7 @@ const App = {
             el.innerHTML = `
                 <div class="leaderboard-item-link" onclick="App.viewNearbyUser('${user.threads_username || user.id}')">
                     <div class="item-avatar">
-                        ${user.threads_avatar_url
-                    ? `<img src="${user.threads_avatar_url}" />`
-                    : '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
-                }
+                        ${(user.threads_avatar_url) ? `<img src="${user.threads_avatar_url}" />` : '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'}
                     </div>
                     <div class="item-info">
                         <div class="item-nick">@${user.threads_username || 'user'}</div>
@@ -557,7 +646,10 @@ const App = {
         if (typeof val === 'object' && val !== null) {
             meters = val.meters ?? val.distance ?? val.dist ?? val.val;
         }
+
+        // FIX: null означает "дистанция неизвестна" — показываем прочерк, а не 0 m
         if (meters === undefined || meters === null || isNaN(meters)) return '—';
+
         if (meters > 0 && meters < 0.1) return '< 1 m';
         if (meters < 1000) return Math.round(meters) + ' m';
         return (meters / 1000).toFixed(1) + ' km';
@@ -576,22 +668,15 @@ const App = {
 
     viewNearbyUser(username) {
         TelegramApp.haptic('impact');
-        this.openThreadsUrl(`https://www.threads.com/@${username}`);
+        this.showToast(`Viewing @${username}`, 'info');
     },
 
-    // ============================================
-    // API
-    // ============================================
     async apiRequest(action, data = {}, retries = 3) {
         try {
             const response = await fetch('/api/action', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    initData: TelegramApp.getInitData(),
-                    action,
-                    ...data
-                })
+                body: JSON.stringify({ initData: TelegramApp.getInitData(), action, ...data })
             });
 
             const result = await response.json();
@@ -615,17 +700,18 @@ const App = {
                 return this.apiRequest(action, data, retries - 1);
             }
 
+            if (isNetworkError) {
+                throw new Error(I18n.t('Request failed'));
+            }
+
             throw error;
         }
     },
 
-    // ============================================
-    // INIT DATA
-    // ============================================
     async loadInitialData() {
         try {
             const data = await this.apiRequest('init-app');
-            console.log('[loadInitialData] Response:', data?.success);
+            console.log('Init data:', data);
 
             if (data.success) {
                 this.userData = data.user;
@@ -645,6 +731,18 @@ const App = {
 
                 if (data.history) {
                     this.spinHistory = data.history;
+                    this.updateHistoryUI();
+                }
+
+                // Initialize location text from DB instantly to prevent hanging UI
+                if (this.userData?.country) {
+                    const locText = document.getElementById('location-text');
+                    const profLocText = document.getElementById('profile-location-text');
+                    if (locText) locText.textContent = `Location: ${this.userData.country}`;
+                    if (profLocText) profLocText.textContent = this.userData.country;
+                } else {
+                    const locText = document.getElementById('location-text');
+                    if (locText) locText.textContent = 'Location pending';
                 }
 
                 this.setAppMode(this.userData.app_mode);
@@ -652,29 +750,27 @@ const App = {
             }
         } catch (error) {
             console.error('Failed to load initial data:', error);
-            document.getElementById('app')?.classList.remove('app-loading');
+            document.getElementById('app').classList.remove('app-loading');
         }
     },
 
-    // ============================================
-    // PROFILE UI
-    // ============================================
     updateProfileUI(user) {
-        if (!user) return;
-
+        if (!user) {
+            console.warn('updateProfileUI: user data is missing');
+            return;
+        }
         const un = document.getElementById('user-name');
         if (un) un.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-
         const av = document.getElementById('user-avatar');
         if (av && TelegramApp.user?.photo_url) {
             av.innerHTML = '';
             const img = document.createElement('img');
             img.src = TelegramApp.user.photo_url;
-            img.referrerPolicy = 'no-referrer';
-            img.onerror = () => {
-                av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
-            };
+            img.referrerPolicy = "no-referrer";
+            img.onerror = () => { av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'; };
             av.appendChild(img);
+        } else if (av) {
+            av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
         }
 
         const sid = document.getElementById('stat-id');
@@ -683,61 +779,310 @@ const App = {
         this.updateProfileVerificationUI(user);
     },
 
-    updateProfileVerificationUI(userData) {
-        const linkBtn = document.getElementById('link-threads-btn');
-        const verifiedSection = document.getElementById('threads-verified-section');
+    updateHistoryUI() {
+        const list = document.getElementById('history-list');
+        if (!list) return;
+        list.innerHTML = '';
 
-        if (userData?.threads_verified && userData?.threads_username) {
-            linkBtn?.classList.add('hidden');
-            verifiedSection?.classList.remove('hidden');
+        this.spinHistory.slice(0, 15).forEach(spin => {
+            const item = document.createElement('div');
+            item.className = 'clay-list-item';
 
-            const pthreads = document.getElementById('profile-threads-info');
-            const pnick = document.getElementById('profile-threads-nick');
-            if (pthreads && pnick) {
-                pthreads.classList.remove('hidden');
-                pnick.textContent = userData.threads_username;
-            }
-        } else {
-            linkBtn?.classList.remove('hidden');
-            verifiedSection?.classList.add('hidden');
-            document.getElementById('profile-threads-info')?.classList.add('hidden');
+            const info = document.createElement('div');
+            info.className = 'item-info';
+            const nick = document.createElement('div');
+            nick.className = 'item-nick';
+            nick.textContent = `@${spin.participant_nickname}`;
+
+            info.appendChild(nick);
+
+            const score = document.createElement('div');
+            score.className = 'item-score';
+            score.style.fontSize = '14px';
+            const starSvg = '<svg class="inline-star clay-star" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+            score.innerHTML = spin.was_free ? I18n.t('profile_free_label') : `1 ${starSvg}`;
+
+            item.appendChild(info);
+            item.appendChild(score);
+            list.appendChild(item);
+        });
+
+        if (this.spinHistory.length === 0) {
+            list.innerHTML = `<div style="text-align:center;color:var(--text-mutted);padding:20px;">${I18n.t('profile_no_spins')}</div>`;
         }
     },
 
-    // ============================================
-    // SEARCH
-    // ============================================
+    async spin() {
+        if (!this.floatingAvatars || this.floatingAvatars.isRolling) return;
+        TelegramApp.haptic('impact');
+
+        const spinBtn = document.getElementById('spin-btn');
+        const btnText = document.getElementById('spin-btn-text');
+        spinBtn.disabled = true;
+        btnText.textContent = I18n.t('spin_spinning');
+
+        const resultEl = document.getElementById('roll-result');
+        if (resultEl) resultEl.classList.add('hidden');
+
+        try {
+            const data = await this.apiRequest('spin-wheel');
+            if (data.success) { this.animateAndShowResult(data, spinBtn, btnText); return; }
+            if (data.need_payment) { await this.handlePaidSpin(spinBtn, btnText); return; }
+            throw new Error(data.error || 'Spin failed');
+        } catch (error) {
+            this.showToast(error.message, 'error');
+            this.showRetryAlert(error.message, () => {
+                spinBtn.disabled = false;
+                btnText.textContent = I18n.t('spin_button');
+            });
+            spinBtn.disabled = false;
+            btnText.textContent = I18n.t('spin_button');
+        }
+    },
+
+    async handlePaidSpin(spinBtn, btnText) {
+        try {
+            const invoiceData = await this.apiRequest('spin-paid');
+            if (!invoiceData.success) throw new Error(invoiceData.error);
+
+            TelegramApp.openInvoice(invoiceData.invoiceUrl, async (status) => {
+                if (status === 'paid') {
+                    this.showToast('Success!', 'success');
+                    btnText.textContent = I18n.t('spin_spinning');
+                    await new Promise(r => setTimeout(r, 2000));
+                    await this.loadInitialData();
+
+                    if (this.spinHistory.length > 0) {
+                        const last = this.spinHistory[0];
+                        this.floatingAvatars.roll(() => {
+                            this.showSpinResult({ nickname: last.participant_nickname, avatar_url: null, new_score: '?' });
+                            spinBtn.disabled = false;
+                            btnText.textContent = I18n.t('spin_button');
+                        });
+                    } else {
+                        spinBtn.disabled = false;
+                        btnText.textContent = I18n.t('spin_button');
+                    }
+                } else {
+                    spinBtn.disabled = false;
+                    btnText.textContent = I18n.t('spin_button');
+                }
+            });
+        } catch (error) {
+            this.showToast(error.message, 'error');
+            spinBtn.disabled = false;
+            btnText.textContent = I18n.t('spin_button');
+        }
+    },
+
+    animateAndShowResult(data, spinBtn, btnText) {
+        this.floatingAvatars.roll(() => {
+            this.updateBalance(data.balance, data.free_spins_left);
+            this.showSpinResult(data.participant);
+            if (this.userData) {
+                this.userData.balance = data.balance;
+                this.userData.free_spins = data.free_spins_left;
+                this.userData.total_spins = data.total_spins;
+                if (data.threads_star_balance !== undefined) {
+                    this.userData.threads_star_balance = data.threads_star_balance;
+                }
+                this.updateProfileUI(this.userData);
+            }
+            spinBtn.disabled = false;
+            btnText.textContent = I18n.t('spin_button');
+        });
+    },
+
+    async showSpinResult(participant) {
+        TelegramApp.haptic('success');
+        const resultEl = document.getElementById('roll-result');
+        const avatarEl = document.getElementById('result-avatar');
+        const nickEl = document.getElementById('result-nick');
+        const scoreEl = document.getElementById('result-score');
+
+        if (resultEl && avatarEl && nickEl && scoreEl) {
+            if (this.resultTimeout) clearTimeout(this.resultTimeout);
+
+            avatarEl.innerHTML = '';
+            if (participant.avatar_url) {
+                const img = document.createElement('img');
+                img.src = participant.avatar_url;
+                img.referrerPolicy = "no-referrer";
+                img.onerror = () => { avatarEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'; };
+                avatarEl.appendChild(img);
+            } else {
+                avatarEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+            }
+
+            const url = `https://www.threads.com/@${participant.nickname}`;
+            nickEl.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="result-nick-link">@${participant.nickname}</a>`;
+            nickEl.querySelector('a')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.openThreadsUrl(url);
+            });
+            scoreEl.textContent = I18n.t('score_plus', { score: 1 });
+
+            let rankEl = document.getElementById('result-rank');
+            if (!rankEl) {
+                rankEl = document.createElement('div');
+                rankEl.id = 'result-rank';
+                rankEl.className = 'result-rank';
+                document.querySelector('.result-info').appendChild(rankEl);
+            }
+            rankEl.textContent = `Rank: ...`;
+            resultEl.classList.remove('hidden');
+
+            try {
+                const lbData = await this.apiRequest('leaderboard');
+                let rankText = '?';
+                if (lbData.success && lbData.leaderboard) {
+                    this.lastLeaderboard = lbData.leaderboard;
+                    const lbItem = lbData.leaderboard.find(i => i.nickname === participant.nickname);
+                    if (lbItem) {
+                        if (lbItem.rank === 1) rankText = '<span class="rank-badge rank-1">#1</span>';
+                        else if (lbItem.rank === 2) rankText = '<span class="rank-badge rank-2">#2</span>';
+                        else if (lbItem.rank === 3) rankText = '<span class="rank-badge rank-3">#3</span>';
+                        else rankText = `#${lbItem.rank}`;
+                    } else rankText = '>50';
+                }
+                rankEl.innerHTML = `Rank: ${rankText}`;
+            } catch (e) { }
+
+            this.resultTimeout = setTimeout(() => {
+                resultEl.classList.add('hidden');
+            }, 5000);
+        }
+    },
+
+    showRetryAlert(message, onDismiss) {
+        message = I18n.t(message);
+        if (TelegramApp.webapp?.showPopup) {
+            TelegramApp.webapp.showPopup({
+                title: I18n.t('error_title'),
+                message: message,
+                buttons: [{ id: 'close', type: 'cancel' }]
+            }, () => { if (onDismiss) onDismiss(); });
+        } else {
+            if (onDismiss) onDismiss();
+        }
+    },
+
+    async loadLeaderboard(silent = false) {
+        if (!silent && !this.leaderboardLoaded) {
+            const list = document.getElementById('leaderboard-list');
+            if (list) list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-mutted);">${I18n.t('leaderboard_loading')}</div>`;
+        }
+
+        try {
+            const data = await this.apiRequest('leaderboard');
+            if (data.success && data.leaderboard) {
+                this.renderLeaderboard(data.leaderboard, silent);
+            }
+        } catch (error) {
+            console.error('Failed to load leaderboard:', error);
+        }
+    },
+
+    renderLeaderboard(leaderboard, silent = false) {
+        const list = document.getElementById('leaderboard-list');
+        if (!list) return;
+
+        try {
+            if (!leaderboard || leaderboard.length === 0) {
+                if (!silent || this.lastLeaderboard.length > 0) {
+                    list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-mutted);">${I18n.t('leaderboard_empty')}</div>`;
+                }
+                this.lastLeaderboard = [];
+                this.leaderboardLoaded = true;
+                return;
+            }
+
+            const newDataStr = JSON.stringify(leaderboard);
+            const oldDataStr = JSON.stringify(this.lastLeaderboard);
+            const isLoaderVisible = list.innerHTML.includes('loading-state') || list.innerHTML.includes(I18n.t('leaderboard_loading'));
+            if (newDataStr === oldDataStr && this.leaderboardLoaded && !isLoaderVisible) return;
+
+            list.innerHTML = '';
+            this.lastLeaderboard = leaderboard;
+            this.leaderboardLoaded = true;
+            const fragment = document.createDocumentFragment();
+            leaderboard.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'clay-list-item';
+                el.style.cursor = 'pointer';
+                const url = `https://www.threads.com/@${item.nickname}`;
+                el.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="leaderboard-item-link"></a>`;
+                const linkWrap = el.querySelector('a');
+
+                linkWrap.onclick = (e) => {
+                    e.preventDefault();
+                    this.openThreadsUrl(url);
+                };
+
+                const rank = document.createElement('div');
+                rank.className = 'item-rank';
+                if (item.rank === 1) rank.innerHTML = '<span class="rank-badge rank-1">#1</span>';
+                else if (item.rank === 2) rank.innerHTML = '<span class="rank-badge rank-2">#2</span>';
+                else if (item.rank === 3) rank.innerHTML = '<span class="rank-badge rank-3">#3</span>';
+                else rank.textContent = `#${item.rank}`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'item-avatar';
+                if (item.avatar_url) {
+                    const img = document.createElement('img');
+                    img.src = item.avatar_url;
+                    img.referrerPolicy = "no-referrer";
+                    img.onerror = () => { avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'; };
+                    avatar.appendChild(img);
+                } else avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+
+                const info = document.createElement('div');
+                info.className = 'item-info';
+                const nick = document.createElement('div');
+                nick.className = 'item-nick';
+                nick.textContent = `@${item.nickname}`;
+                info.appendChild(nick);
+
+                const score = document.createElement('div');
+                score.className = 'item-score';
+                score.innerHTML = `${item.score} <svg class="inline-star clay-star" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+
+                linkWrap.appendChild(rank); linkWrap.appendChild(avatar); linkWrap.appendChild(info); linkWrap.appendChild(score);
+                fragment.appendChild(el);
+            });
+            list.appendChild(fragment);
+        } catch (error) {
+            console.error('Render leaderboard error:', error);
+        }
+    },
+
     async searchUser() {
         const input = document.getElementById('search-input');
         const resultEl = document.getElementById('search-result');
         const searchBtn = document.getElementById('search-btn');
         const nickname = input?.value?.trim();
-
-        if (!nickname) {
-            this.showToast(I18n.t('add_enter_username'), 'info');
-            return;
-        }
+        if (!nickname) { this.showToast(I18n.t('add_enter_username'), 'info'); return; }
 
         input.blur();
         document.body.classList.remove('keyboard-open');
         TelegramApp.haptic('impact');
 
-        resultEl.innerHTML = `<div style="text-align:center;color:var(--text-mutted);padding:20px;">${I18n.t('add_searching')}</div>`;
+        resultEl.innerHTML = `<div style="text-align:center;color:var(--text-mutted);padding: 20px;">${I18n.t('add_searching')}</div>`;
         resultEl.classList.remove('hidden');
 
         try {
             const data = await this.apiRequest('search-threads', { nickname });
-
             if (data.found) {
                 if (searchBtn) searchBtn.textContent = 'X';
                 this.showSearchFound(data, resultEl);
             } else {
                 if (searchBtn) searchBtn.textContent = 'X';
-                resultEl.innerHTML = `<div style="text-align:center;color:var(--text-mutted);padding:20px;">${I18n.t('add_not_found', { nick: nickname })}</div>`;
+                resultEl.innerHTML = `<div style="text-align:center;color:var(--text-mutted);padding: 20px;">${I18n.t('add_not_found', { nick: nickname })}</div>`;
             }
         } catch (error) {
             if (searchBtn) searchBtn.textContent = 'X';
-            resultEl.innerHTML = `<div style="text-align:center;color:#ef4444;padding:20px;">${I18n.t('error_search_failed')}</div>`;
+            resultEl.innerHTML = `<div style="text-align:center;color:#ef4444;padding: 20px;">${I18n.t('error_search_failed')}</div>`;
         }
     },
 
@@ -755,25 +1100,25 @@ const App = {
 
         const av = document.createElement('div');
         av.className = 'result-avatar';
-        av.style.cssText = 'width:60px;height:60px;flex-shrink:0;';
+        av.style.width = '60px';
+        av.style.height = '60px';
+        av.style.flexShrink = '0';
 
         if (data.avatar_url) {
             const img = document.createElement('img');
             img.src = data.avatar_url;
-            img.referrerPolicy = 'no-referrer';
-            img.onerror = () => {
-                av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
-            };
+            img.referrerPolicy = "no-referrer";
+            img.onerror = () => { av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'; };
             av.appendChild(img);
-        } else {
-            av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
-        }
+        } else av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
 
         const url = `https://www.threads.com/@${data.nickname}`;
         const nick = document.createElement('div');
         nick.className = 'result-nick';
         nick.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="result-nick-link">@${data.nickname}</a>`;
-        nick.style.cssText = 'font-weight:bold;font-size:18px;';
+        nick.style.fontWeight = 'bold';
+        nick.style.fontSize = '18px';
+
         nick.querySelector('a')?.addEventListener('click', (e) => {
             e.preventDefault();
             this.openThreadsUrl(url);
@@ -783,7 +1128,12 @@ const App = {
         status.style.fontSize = '14px';
 
         if (data.already_exists) {
-            status.innerHTML = I18n.t('add_already_score', { score: data.score || 0, rank: '>50' });
+            let userRankText = '>50';
+            if (this.lastLeaderboard) {
+                const lbItem = this.lastLeaderboard.find(i => i.nickname === data.nickname);
+                if (lbItem) userRankText = lbItem.rank;
+            }
+            status.innerHTML = I18n.t('add_already_score', { score: data.score || 0, rank: userRankText });
             status.style.color = 'var(--text-mutted)';
         } else {
             status.textContent = I18n.t('add_found');
@@ -791,11 +1141,11 @@ const App = {
         }
 
         const btn = document.createElement('button');
-        btn.style.marginTop = '10px';
 
         if (!data.already_exists) {
             btn.className = 'clay-btn clay-primary';
             btn.textContent = I18n.t('add_button');
+            btn.style.marginTop = '10px';
             btn.onclick = async () => {
                 btn.disabled = true;
                 btn.textContent = '...';
@@ -810,9 +1160,7 @@ const App = {
                         this.showToast(I18n.t('error_not_on_threads', { nick: data.nickname }), 'error');
                         btn.disabled = false;
                         btn.textContent = I18n.t('add_button');
-                    } else {
-                        throw new Error(res.error);
-                    }
+                    } else throw new Error(res.error);
                 } catch (e) {
                     this.showToast(e.message, 'error');
                     btn.disabled = false;
@@ -822,6 +1170,7 @@ const App = {
         } else {
             btn.className = `clay-btn ${isSubscribed ? 'clay-secondary' : 'clay-primary'}`;
             btn.textContent = isSubscribed ? I18n.t('sub_btn_unsubscribe') : I18n.t('sub_btn_subscribe');
+            btn.style.marginTop = '10px';
             btn.onclick = async () => {
                 TelegramApp.haptic('impact');
                 btn.disabled = true;
@@ -831,10 +1180,7 @@ const App = {
                         isSubscribed = res.subscribed;
                         btn.className = `clay-btn ${isSubscribed ? 'clay-secondary' : 'clay-primary'}`;
                         btn.textContent = isSubscribed ? I18n.t('sub_btn_unsubscribe') : I18n.t('sub_btn_subscribe');
-                        this.showToast(
-                            isSubscribed ? I18n.t('sub_subscribed') : I18n.t('sub_unsubscribed'),
-                            isSubscribed ? 'success' : 'warning'
-                        );
+                        this.showToast(isSubscribed ? I18n.t('sub_subscribed') : I18n.t('sub_unsubscribed'), isSubscribed ? 'success' : 'warning');
                     }
                 } catch (e) { }
                 btn.disabled = false;
@@ -848,37 +1194,413 @@ const App = {
         container.classList.remove('hidden');
     },
 
-    // ============================================
-    // HELPERS
-    // ============================================
-    updateLangButtons() {
-        // Handled by I18n
-    },
-
-    copyToClipboard(text) {
-        if (navigator.clipboard?.writeText) {
-            navigator.clipboard.writeText(text)
-                .then(() => this.showToast(I18n.t('copy_success'), 'success'))
-                .catch(() => this.fallbackCopy(text));
-        } else {
-            this.fallbackCopy(text);
+    showDepositModal() {
+        TelegramApp.haptic('impact');
+        const modal = document.getElementById('deposit-modal');
+        const input = document.getElementById('custom-deposit');
+        if (modal && input) {
+            input.value = '';
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            input.focus();
+            setTimeout(() => input.focus(), 50);
         }
     },
 
-    fallbackCopy(text) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
+    closeModals() {
+        document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+        document.body.style.overflow = '';
+    },
+
+    async createDeposit(amount) {
+        TelegramApp.haptic('impact');
+        this.closeModals();
+        this.showLoading(true);
+        try {
+            const invoiceData = await this.apiRequest('create-invoice', { amount });
+            if (!invoiceData.success) throw new Error(invoiceData.error);
+            this.showLoading(false);
+            this.pendingPayment = { transactionId: invoiceData.transactionId, amount };
+            TelegramApp.openInvoice(invoiceData.invoiceUrl, async (status) => {
+                if (status === 'paid') {
+                    TelegramApp.haptic('success');
+                    await this.checkPaymentAndUpdate();
+                } else {
+                    this.pendingPayment = null;
+                    if (status === 'failed') { this.showToast(I18n.t('deposit_failed'), 'error'); }
+                }
+            });
+        } catch (error) {
+            this.showLoading(false);
+            this.showToast(error.message, 'error');
+        }
+    },
+
+    async checkPaymentAndUpdate() {
+        if (!this.pendingPayment) return;
+        this.showLoading(true);
+        await new Promise(r => setTimeout(r, 1500));
+        let attempts = 0;
+        const poll = async () => {
+            attempts++;
+            try {
+                const result = await this.apiRequest('check-payment', { transactionId: this.pendingPayment.transactionId });
+                if (result.success && result.status === 'completed') {
+                    this.showLoading(false);
+                    this.updateBalance(result.balance);
+                    const amt = this.pendingPayment.amount;
+                    this.showToast(I18n.t('deposit_success', { amount: amt }), 'success');
+                    this.pendingPayment = null;
+                    if (this.userData) { this.userData.total_deposited = (this.userData.total_deposited || 0) + amt; this.updateProfileUI(this.userData); }
+                    return;
+                }
+            } catch (e) { }
+            if (attempts < 10) setTimeout(poll, 2000);
+            else {
+                this.showLoading(false);
+                this.showToast(I18n.t('deposit_processing'), 'info');
+                this.pendingPayment = null;
+                setTimeout(() => this.loadInitialData(), 5000);
+            }
+        };
+        poll();
+    },
+
+    showLoading(show) {
+        const l = document.getElementById('loading');
+        if (l) l.classList.toggle('active', show);
+    },
+
+    // ============================================
+    // THREADS VERIFICATION
+    // ============================================
+    updateProfileVerificationUI(userData) {
+        const linkBtn = document.getElementById('link-threads-btn');
+        const verifiedSection = document.getElementById('threads-verified-section');
+        const verifiedNick = document.getElementById('verified-threads-nick');
+        const starBalance = document.getElementById('threads-star-balance');
+
+        if (userData?.threads_verified && userData?.threads_username) {
+            linkBtn?.classList.add('hidden');
+            verifiedSection?.classList.remove('hidden');
+            if (starBalance) starBalance.textContent = userData.threads_star_balance || 0;
+
+            const pthreads = document.getElementById('profile-threads-info');
+            const pnick = document.getElementById('profile-threads-nick');
+            if (pthreads && pnick) {
+                pthreads.classList.remove('hidden');
+                pnick.textContent = userData.threads_username;
+            }
+            const ssection = document.getElementById('settings-threads-section');
+            const sstatus = document.getElementById('settings-threads-status');
+            if (ssection && sstatus) {
+                ssection.classList.remove('hidden');
+                sstatus.textContent = I18n.t('threads_settings_connected', { nick: userData.threads_username });
+            }
+        } else {
+            linkBtn?.classList.remove('hidden');
+            verifiedSection?.classList.add('hidden');
+            document.getElementById('profile-threads-info')?.classList.add('hidden');
+            document.getElementById('settings-threads-section')?.classList.add('hidden');
+        }
+    },
+
+    updateLangButtons() {
+        // Handled by I18n.apply() called within I18n.setLanguage()
+    },
+
+    copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                this.showToast(I18n.t('copy_success'), 'success');
+            }).catch(() => {
+                this.fallbackCopyTextToClipboard(text);
+            });
+        } else {
+            this.fallbackCopyTextToClipboard(text);
+        }
+    },
+
+    fallbackCopyTextToClipboard(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
         try {
             document.execCommand('copy');
             this.showToast(I18n.t('copy_success'), 'success');
         } catch (err) {
             this.showToast(I18n.t('copy_error'), 'error');
         }
-        document.body.removeChild(ta);
+        document.body.removeChild(textArea);
+    },
+
+    // ============================================
+    // CHALLENGES
+    // ============================================
+    challengeTimerInterval: null,
+    challengeData: null,
+
+    async checkChallengesEnabled() {
+        try {
+            const data = await this.apiRequest('get-challenges');
+            if (data.success && data.challenges_enabled) {
+                document.getElementById('gift-btn')?.classList.remove('hidden');
+            } else {
+                document.getElementById('gift-btn')?.classList.add('hidden');
+            }
+        } catch (e) {
+            // Silently fail
+        }
+    },
+
+    openChallenges() {
+        TelegramApp.haptic('impact');
+        const page = document.getElementById('challenges-page');
+        if (page) {
+            page.style.display = 'flex';
+            setTimeout(() => page.classList.add('active'), 10);
+            TelegramApp.showBackButton(() => this.closeChallenges());
+            this.loadChallenges();
+        }
+    },
+
+    closeChallenges() {
+        const page = document.getElementById('challenges-page');
+        if (page) {
+            page.classList.remove('active');
+            setTimeout(() => page.style.display = 'none', 400);
+        }
+        TelegramApp.hideBackButton();
+        if (this.challengeTimerInterval) {
+            clearInterval(this.challengeTimerInterval);
+            this.challengeTimerInterval = null;
+        }
+    },
+
+    async loadChallenges() {
+        const list = document.getElementById('challenges-list');
+        if (!list) return;
+        list.innerHTML = `<div style="text-align:center;color:var(--text-mutted);padding:20px;">Loading...</div>`;
+
+        try {
+            const data = await this.apiRequest('get-challenges');
+            if (!data.success) {
+                list.innerHTML = `<div style="text-align:center;color:#ef4444;padding:20px;">Error loading challenges</div>`;
+                return;
+            }
+            this.challengeData = data;
+            this.renderChallenges(data);
+        } catch (e) {
+            list.innerHTML = `<div style="text-align:center;color:#ef4444;padding:20px;">${e.message}</div>`;
+        }
+    },
+
+    renderChallenges(data) {
+        const list = document.getElementById('challenges-list');
+        if (!list) return;
+        list.innerHTML = '';
+
+        const challengeConfigs = [
+            { type: 'burn', icon: '🔥', config: data.challenges.burn },
+            { type: 'neuroprofiler', icon: '🧠', config: data.challenges.neuroprofiler },
+            { type: 'vpn', icon: '🔒', config: data.challenges.vpn },
+            { type: 'gamble', icon: '🎲', config: data.challenges.gamble }
+        ];
+
+        const fragment = document.createDocumentFragment();
+
+        challengeConfigs.forEach(({ type, icon, config }) => {
+            const myActive = data.my_active.find(p => p.challenge_type === type);
+            const myHistory = data.my_history.filter(p => p.challenge_type === type);
+            const card = this.createChallengeCard(type, icon, config, myActive, myHistory);
+            fragment.appendChild(card);
+        });
+
+        list.appendChild(fragment);
+
+        if (this.challengeTimerInterval) clearInterval(this.challengeTimerInterval);
+        this.challengeTimerInterval = setInterval(() => this.updateChallengeTimers(), 1000);
+    },
+
+    createChallengeCard(type, icon, config, myActive, myHistory) {
+        const card = document.createElement('div');
+        card.className = 'challenge-card';
+
+        const header = document.createElement('div');
+        header.className = 'challenge-card-header';
+
+        const iconEl = document.createElement('div');
+        iconEl.className = `challenge-icon ${type}`;
+        iconEl.textContent = icon;
+
+        const title = document.createElement('div');
+        title.className = 'challenge-title';
+        title.innerHTML = I18n.t(`challenge_${type}_title`);
+
+        header.appendChild(iconEl);
+        header.appendChild(title);
+        card.appendChild(header);
+
+        const desc = document.createElement('div');
+        desc.className = 'challenge-desc';
+        desc.innerHTML = I18n.t(`challenge_${type}_desc`);
+        card.appendChild(desc);
+
+        if (type === 'burn') {
+            const burnedCount = document.createElement('div');
+            burnedCount.className = 'challenge-desc';
+            burnedCount.style.marginTop = '8px';
+            burnedCount.style.color = 'var(--text-light)';
+            burnedCount.textContent = I18n.t('challenge_burn_participants', { count: config.active_participants || 0 });
+            card.appendChild(burnedCount);
+        }
+
+        if (config.deadline && (new Date(config.deadline).getTime() > Date.now() || myActive)) {
+            const timer = document.createElement('div');
+            timer.className = 'challenge-timer';
+            timer.dataset.expiresAt = config.deadline;
+            timer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="timer-text">${this.formatCountdown(config.deadline)}</span>`;
+            card.appendChild(timer);
+        }
+
+        if (myActive) {
+            const stakedEl = document.createElement('div');
+            stakedEl.className = 'challenge-desc';
+            stakedEl.style.fontWeight = '700';
+            stakedEl.style.color = 'var(--accent-light)';
+            stakedEl.textContent = I18n.t('challenge_staked', { stars: myActive.stars_staked, rating: myActive.rating_staked });
+            card.appendChild(stakedEl);
+
+            if (!config.deadline && myActive.expires_at) {
+                const timer = document.createElement('div');
+                timer.className = 'challenge-timer';
+                timer.dataset.expiresAt = myActive.expires_at;
+                timer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="timer-text">${this.formatCountdown(myActive.expires_at)}</span>`;
+                card.appendChild(timer);
+            }
+
+            const status = document.createElement('div');
+            status.className = 'challenge-status';
+            status.textContent = I18n.t('challenge_joined');
+            card.appendChild(status);
+        } else if (myHistory.length > 0) {
+            const last = myHistory[0];
+            const statusEl = document.createElement('div');
+            statusEl.className = `challenge-status ${last.status}`;
+            let statusKey = `challenge_status_${last.status}`;
+            if (type === 'burn' && last.status === 'completed') {
+                statusKey = 'challenge_status_burn_completed';
+            }
+            statusEl.textContent = I18n.t(statusKey);
+            card.appendChild(statusEl);
+        } else if (config.enabled) {
+            const btn = this.createJoinButton(type);
+            card.appendChild(btn);
+        } else {
+            const disabled = document.createElement('div');
+            disabled.className = 'challenge-disabled-label';
+            disabled.textContent = I18n.t('challenge_disabled');
+            card.appendChild(disabled);
+        }
+
+        return card;
+    },
+
+    createJoinButton(type) {
+        const btn = document.createElement('button');
+        btn.className = 'challenge-join-btn';
+        btn.textContent = I18n.t('challenge_join_btn');
+        btn.onclick = () => this.joinChallenge(type);
+        return btn;
+    },
+
+    async joinChallenge(type) {
+        const stars = this.userData?.balance || 0;
+        const rating = this.challengeData?.my_participant_score || 0;
+
+        if (stars === 0 && rating === 0) {
+            this.showToast('challenge_nothing_to_stake', 'error');
+            return;
+        }
+
+        const confirmText = I18n.t('challenge_confirm', { stars, rating });
+        if (!confirm(confirmText)) return;
+
+        TelegramApp.haptic('impact');
+
+        try {
+            const data = await this.apiRequest('join-challenge', { challenge_type: type });
+            if (data.success) {
+                TelegramApp.haptic('success');
+                this.showToast('challenge_joined_toast', 'success');
+
+                if (this.userData) {
+                    this.userData.balance = 0;
+                    this.userData.threads_star_balance = 0;
+                    this.updateBalance(0);
+                    this.updateProfileUI(this.userData);
+                }
+
+                await this.loadChallenges();
+            } else {
+                const errorKey = data.error || 'Error';
+                const translatedError = I18n.t(`challenge_${errorKey}`) !== `challenge_${errorKey}`
+                    ? `challenge_${errorKey}`
+                    : errorKey;
+                this.showToast(translatedError, 'error');
+            }
+        } catch (e) {
+            this.showToast(e.message, 'error');
+        }
+    },
+
+    formatCountdown(expiresAt) {
+        const now = Date.now();
+        const end = new Date(expiresAt).getTime();
+        const diff = end - now;
+
+        if (diff <= 0) return I18n.t('challenge_status_expired');
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        let timeStr = '';
+        if (days > 0) timeStr += `${days}д `;
+        timeStr += `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        return I18n.t('challenge_timer_left', { time: timeStr });
+    },
+
+    updateChallengeTimers() {
+        let expiredFound = false;
+        document.querySelectorAll('.challenge-timer').forEach(timer => {
+            const expiresAt = timer.dataset.expiresAt;
+            if (!expiresAt) return;
+            const end = new Date(expiresAt).getTime();
+
+            if (Date.now() >= end) {
+                if (!timer.dataset.hasTriggered) {
+                    timer.dataset.hasTriggered = 'true';
+                    expiredFound = true;
+                    const textEl = timer.querySelector('.timer-text');
+                    if (textEl) textEl.textContent = I18n.t('challenge_status_expired');
+                }
+            } else {
+                const textEl = timer.querySelector('.timer-text');
+                if (textEl) {
+                    textEl.textContent = this.formatCountdown(expiresAt);
+                }
+            }
+        });
+
+        if (expiredFound) {
+            setTimeout(() => this.loadChallenges(), 2000);
+        }
     },
 };
 

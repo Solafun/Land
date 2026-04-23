@@ -1011,8 +1011,8 @@ async function updateLocation(req, res, user) {
 
         console.log(`Points count: ${points.length}, user.id: ${user.id}`);
 
-        // RPC returns { success, country, nearby: [...] } — extract the array
-        const nearbyUsersRaw = nearbyRes || [];
+        // RPC returns the array directly
+        const nearbyUsersRaw = data || [];
         const nearby = (Array.isArray(nearbyUsersRaw) ? nearbyUsersRaw : []).map(u => ({
             id: u.id,
             threads_username: u.threads_username,

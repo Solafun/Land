@@ -1116,8 +1116,13 @@ async function getNearbyHandler(req, res, user) {
         }
 
         const nearbyMapped = nearby.map(u => ({
-            id: u.id, threads_username: u.threads_username, threads_avatar_url: u.threads_avatar_url,
-            distance_meters: u.distance_meters, lat: u.lat, lng: u.lng
+            id: u.id, 
+            threads_username: u.threads_username, 
+            threads_avatar_url: u.threads_avatar_url,
+            distance_meters: u.distance_meters, 
+            lat: u.lat, 
+            lng: u.lng,
+            country: u.country
         }));
 
         const { data: pointsRes } = await supabase.from('users').select('id, lat, lng, threads_username, threads_avatar_url').not('lat', 'is', null).limit(200);

@@ -1073,9 +1073,34 @@ async function getMapPoints(req, res, user) {
     }
 }
 
-// ============================================
-// MAIN HANDLER
-// ============================================
+async function getNearbyHandler(req, res, user) {
+    const { lat, lng } = req.body;
+    try {
+        const { data, error } = await supabase.rpc('update_location_and_get_nearby', {
+            p_user_id: user.id,
+            p_lat: parseFloat(lat || 0),
+            p_lng: parseFloat(lng || 0),
+            p_country: 'Earth'
+        });
+
+        if (error) throw error;
+
+        const nearby = (data || []).map(u => ({
+            id: u.id, threads_username: u.threads_username, threads_avatar_url: u.threads_avatar_url,
+            distance_meters: u.distance_meters, lat: u.lat, lng: u.lng
+        }));
+
+        const { data: pointsRes } = await supabase.from('users').select('id, lat, lng, threads_username, threads_avatar_url').not('lat', 'is', null).limit(200);
+        const points = (pointsRes || []).map(u => ({
+            id: u.id, lat: parseFloat(u.lat), lng: parseFloat(u.lng), nickname: u.threads_username, avatar_url: u.threads_avatar_url
+        }));
+
+        return res.status(200).json({ success: true, nearby, points });
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+}
+
 module.exports = async function handler(req, res) {
     // CORS Headers
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -1125,6 +1150,7 @@ module.exports = async function handler(req, res) {
         switch (action) {
             case 'init-app': return await handleInitApp(req, res, user);
             case 'init-user': return await initUser(req, res, user);
+            case 'get-nearby': return await getNearbyHandler(req, res, user);
             case 'search-threads': return await searchThreads(req, res, user);
             case 'add-participant': return await addParticipant(req, res, user);
             case 'toggle-subscription': return await toggleSubscription(req, res, user);

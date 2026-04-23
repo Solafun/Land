@@ -428,22 +428,29 @@ const App = {
         if (this._geoStarted) return;
         this._geoStarted = true;
 
+        // Set a global timeout to stop "Detecting location" if it hangs
+        setTimeout(() => {
+            const el = document.getElementById('location-text');
+            if (el && el.textContent.includes('Detecting')) {
+                el.textContent = 'Location unavailable';
+            }
+        }, 8000);
+
         const update = (lat, lng) => {
             console.log(`[GEO] Updating location: ${lat}, ${lng}`);
             this.updateUserLocation(lat, lng);
         };
 
         const tryTelegram = () => {
-            console.log('[GEO] Trying Telegram LocationManager...');
             if (window.Telegram?.WebApp?.LocationManager) {
                 const lm = window.Telegram.WebApp.LocationManager;
-                console.log('[GEO] LocationManager found, calling getLocation...');
+                // Some versions require initialization
+                if (lm.init) lm.init(); 
+                
                 lm.getLocation((data) => {
-                    console.log('[GEO] Telegram result:', data);
                     if (data && data.latitude) {
                         update(data.latitude, data.longitude);
                     } else {
-                        console.log('[GEO] Telegram empty/failed, falling back to browser...');
                         tryBrowser();
                     }
                 });
@@ -453,22 +460,16 @@ const App = {
         };
 
         const tryBrowser = () => {
-            console.log('[GEO] Trying Browser Geolocation...');
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        console.log('[GEO] Browser success:', pos.coords);
-                        update(pos.coords.latitude, pos.coords.longitude);
-                    },
+                    (pos) => update(pos.coords.latitude, pos.coords.longitude),
                     (err) => {
                         console.error('[GEO] Browser error:', err);
                         const el = document.getElementById('location-text');
                         if (el) el.textContent = 'Location denied';
                     },
-                    { enableHighAccuracy: false, timeout: 10000 }
+                    { enableHighAccuracy: false, timeout: 6000 }
                 );
-            } else {
-                console.log('[GEO] Browser geolocation not supported');
             }
         };
 
@@ -528,16 +529,30 @@ const App = {
     },
 
     async loadNearby(silent = false) {
-        if (!silent && !this.nearbyLoaded) {
+        if (!silent) {
             const list = document.getElementById('nearby-list');
             if (list) list.innerHTML = `<div class="loading-state">Finding people around you...</div>`;
         }
 
         try {
-            // We reuse the update-location logic if we have cached coords, or just fetch if server remembers
-            // For now, let's assume update-location is the primary way
+            const data = await this.apiRequest('get-nearby', {
+                lat: this.currentLat,
+                lng: this.currentLng
+            });
+            
+            if (data.success && data.nearby) {
+                this.renderNearbyList(data.nearby);
+                // Also update global points if returned
+                if (data.points && this.earthMap) {
+                    this.earthMap.setPoints(data.points, this.userData.id);
+                }
+            }
         } catch (error) {
             console.error('Failed to load nearby:', error);
+            if (!silent) {
+                const list = document.getElementById('nearby-list');
+                if (list) list.innerHTML = `<div class="empty-state">Unable to load people</div>`;
+            }
         }
     },
 
@@ -686,8 +701,19 @@ const App = {
                 this.updateProfileUI(data.user);
 
                 // Initial map points and nearby list
-                if (data.nearby) this.renderNearbyList(data.nearby);
-                if (data.points && this.earthMap) this.earthMap.setPoints(data.points, this.userData.id);
+                if (data.nearby && data.nearby.length > 0) {
+                    this.renderNearbyList(data.nearby);
+                } else {
+                    // Force a local load of nearby if server didn't provide them yet
+                    this.loadNearby(true);
+                }
+                
+                if (data.points && this.earthMap) {
+                    this.earthMap.setPoints(data.points, this.userData.id);
+                    // Update counter from initial points
+                    const count = document.getElementById('active-users-count');
+                    if (count) count.textContent = data.points.length;
+                }
 
                 // History
                 if (data.history) {

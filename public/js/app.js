@@ -362,19 +362,26 @@ const App = {
         document.activeElement?.blur();
         document.body.classList.remove('keyboard-open');
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.toggle('active', tab.id === `${tabId}-tab`));
+        
+        const tabs = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => {
+            const isActive = tab.id === `${tabId}-tab`;
+            tab.classList.toggle('active', isActive);
+            // On nearby and other content tabs, enable full pointer events for scrolling
+            if (isActive) {
+                tab.style.pointerEvents = tabId === 'map' ? 'none' : 'auto';
+            }
+        });
         
         this.currentTab = tabId;
 
         if (tabId === 'nearby' && !this.nearbyLoaded) this.loadNearby();
         else if (tabId === 'nearby') this.loadNearby(true);
         
-        // Hide/Show background canvas depending on tab
-        const bg = document.getElementById('bg-canvas');
-        if (tabId === 'map') {
-            if (bg) bg.style.opacity = '0';
-        } else {
-            if (bg) bg.style.opacity = '1';
+        // Disable globe interactions when not on the map tab
+        const globeBg = document.getElementById('globe-background');
+        if (globeBg) {
+            globeBg.style.pointerEvents = tabId === 'map' ? 'auto' : 'none';
         }
     },
 

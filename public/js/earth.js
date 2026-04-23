@@ -54,8 +54,8 @@ export class EarthMap {
             emissive: 0x111122,
             specular: 0x333333,
             shininess: 5,
-            transparent: true,
-            opacity: 0.95
+            transparent: false,
+            opacity: 1.0
         });
 
         this.globe = new THREE.Mesh(geometry, material);
@@ -145,7 +145,7 @@ export class EarthMap {
             const spriteMaterial = new THREE.SpriteMaterial({ 
                 map: isMe ? meTexture : otherTexture,
                 transparent: true,
-                depthTest: false,
+                depthTest: true,
                 sizeAttenuation: true
             });
             const sprite = new THREE.Sprite(spriteMaterial);
@@ -173,9 +173,10 @@ export class EarthMap {
         // Outer glow
         const gradient = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
         if (isMe) {
-            gradient.addColorStop(0, 'rgba(100, 220, 255, 0.9)');
-            gradient.addColorStop(0.6, 'rgba(60, 180, 255, 0.4)');
-            gradient.addColorStop(1, 'rgba(60, 180, 255, 0)');
+            gradient.addColorStop(0, 'rgba(0, 255, 120, 1.0)');
+            gradient.addColorStop(0.4, 'rgba(0, 255, 80, 0.7)');
+            gradient.addColorStop(0.7, 'rgba(0, 200, 50, 0.3)');
+            gradient.addColorStop(1, 'rgba(0, 200, 50, 0)');
         } else {
             gradient.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
             gradient.addColorStop(0.6, 'rgba(200, 200, 220, 0.3)');
@@ -187,7 +188,7 @@ export class EarthMap {
         ctx.fill();
 
         // Person silhouette
-        const color = isMe ? '#e0f7ff' : '#d0d0e0';
+        const color = isMe ? '#ffffff' : '#d0d0e0';
         ctx.fillStyle = color;
         // Head
         ctx.beginPath();

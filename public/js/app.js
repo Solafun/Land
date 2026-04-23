@@ -687,7 +687,7 @@ const App = {
 
                 // Initial map points and nearby list
                 if (data.nearby) this.renderNearbyList(data.nearby);
-                if (data.points) EarthMap.setPoints(data.points, this.userData.id);
+                if (data.points && this.earthMap) this.earthMap.setPoints(data.points, this.userData.id);
 
                 // History
                 if (data.history) {

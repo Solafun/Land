@@ -1106,7 +1106,7 @@ async function getNearbyHandler(req, res, user) {
             if (error || !userData?.lat) {
                 const { data: recent } = await supabase
                     .from('users')
-                    .select('id, threads_username, threads_avatar_url, lat, lng')
+                    .select('id, threads_username, threads_avatar_url, lat, lng, country')
                     .not('lat', 'is', null)
                     .limit(20);
                 nearby = (recent || []).map(u => ({ ...u, distance_meters: 0 }));

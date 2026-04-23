@@ -428,40 +428,47 @@ const App = {
         if (this._geoStarted) return;
         this._geoStarted = true;
 
-        console.log('[GEO] Init tracking...');
-
-        const success = (lat, lng) => {
-            console.log(`[GEO] Got coords: ${lat}, ${lng}`);
+        const update = (lat, lng, source) => {
+            console.log(`[GEO] SUCCESS via ${source}: ${lat}, ${lng}`);
             this.updateUserLocation(lat, lng);
         };
 
-        const error = (err) => {
-            console.error('[GEO] Error:', err);
-            const el = document.getElementById('location-text');
-            if (el) el.textContent = 'Location unavailable';
+        const tryBrowser = (reason) => {
+            console.log(`[GEO] Trying browser fallback (Reason: ${reason})...`);
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (p) => update(p.coords.latitude, p.coords.longitude, 'Browser'),
+                    (err) => {
+                        console.error('[GEO] Browser failed:', err);
+                        document.getElementById('location-text').textContent = 'Location denied';
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            }
         };
 
-        // Try standard browser geolocation first (often more reliable in Mini Apps)
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => success(pos.coords.latitude, pos.coords.longitude),
-                (err) => {
-                    // If browser fails, try Telegram specific as fallback
-                    if (window.Telegram?.WebApp?.LocationManager) {
-                        const lm = window.Telegram.WebApp.LocationManager;
-                        if (!lm.isInited) {
-                            lm.init(() => lm.getLocation(data => data?.latitude ? success(data.latitude, data.longitude) : error(err)));
-                        } else {
-                            lm.getLocation(data => data?.latitude ? success(data.latitude, data.longitude) : error(err));
-                        }
+        const T = window.Telegram?.WebApp;
+        if (T?.LocationManager && T.isVersionAtLeast('7.0')) {
+            console.log('[GEO] Using Telegram LocationManager...');
+            const lm = T.LocationManager;
+            
+            const startSearch = () => {
+                lm.getLocation((data) => {
+                    if (data && data.latitude) {
+                        update(data.latitude, data.longitude, 'Telegram');
                     } else {
-                        error(err);
+                        tryBrowser('Telegram returned no data');
                     }
-                },
-                { enableHighAccuracy: false, timeout: 8000 }
-            );
+                });
+            };
+
+            if (!lm.isInited) {
+                lm.init(() => startSearch());
+            } else {
+                startSearch();
+            }
         } else {
-            error('Not supported');
+            tryBrowser('Telegram LM not available');
         }
     },
 
@@ -569,7 +576,8 @@ const App = {
             el.className = 'clay-list-item';
             
             // Support distance_km (from RPC), distance_meters, and other variants
-            let meters = user.distance_meters || user.distance || user.dist || user.proximity;
+            let meters = user.distance_meters;
+            if (meters === undefined || meters === null) meters = user.distance || user.dist || user.proximity;
             
             // RPC returns distance_km — convert to meters
             if ((meters === undefined || meters === null) && user.distance_km !== undefined) {

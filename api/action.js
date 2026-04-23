@@ -41,6 +41,10 @@ function verifyTelegramData(initData) {
             .update(BOT_TOKEN)
             .digest();
 
+        const calculatedHash = crypto.createHmac('sha256', secretKey)
+            .update(dataCheckString)
+            .digest('hex');
+
         if (calculatedHash !== hash) {
             console.warn('verifyTelegramData: Hash mismatch');
             return null;

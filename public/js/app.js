@@ -486,7 +486,14 @@ const App = {
             const el = document.createElement('div');
             el.className = 'clay-list-item';
             
-            const dist = this.formatDistance(user.distance_meters || user.distance || user.dist || user.proximity);
+            let meters = user.distance_meters || user.distance || user.dist || user.proximity;
+            
+            // Ultimate fallback: calculate on client side if server failed
+            if ((meters === undefined || meters === null || isNaN(meters)) && this.currentLat && (user.lat || user.latitude)) {
+                meters = this.getDistance(this.currentLat, this.currentLng, user.lat || user.latitude, user.lng || user.longitude);
+            }
+
+            const dist = this.formatDistance(meters);
 
             el.innerHTML = `
                 <div class="leaderboard-item-link" onclick="App.viewNearbyUser('${user.username || user.id}')">
@@ -521,6 +528,17 @@ const App = {
         
         if (meters < 1000) return Math.round(meters) + ' m';
         return (meters / 1000).toFixed(1) + ' km';
+    },
+
+    getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // meters
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     },
 
     viewNearbyUser(username) {

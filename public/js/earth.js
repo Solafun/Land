@@ -20,6 +20,9 @@ export class EarthMap {
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.container.appendChild(this.renderer.domElement);
 
+        this.targetCameraPos = null;
+        this.isFocusing = false;
+
         this.camera.position.z = 220;
 
         // Lighting
@@ -76,6 +79,16 @@ export class EarthMap {
 
     animate() {
         requestAnimationFrame(() => this.animate());
+        
+        if (this.isFocusing && this.targetCameraPos) {
+            this.camera.position.lerp(this.targetCameraPos, 0.05);
+            this.camera.lookAt(0, 0, 0);
+            
+            if (this.camera.position.distanceTo(this.targetCameraPos) < 0.1) {
+                this.isFocusing = false;
+            }
+        }
+
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
@@ -90,19 +103,35 @@ export class EarthMap {
         points.forEach(pos => {
             const isMe = String(pos.id) === String(currentUserId);
             
-            // Me is green, others are red
-            const color = isMe ? 0x00ff88 : 0xff3366;
-            const size = isMe ? 2.5 : 1.5; // Make "Me" slightly bigger
-
-            const pointGeometry = new THREE.SphereGeometry(size, 16, 16);
-            const pointMaterial = new THREE.MeshBasicMaterial({ color });
-            
-            const point = new THREE.Mesh(pointGeometry, pointMaterial);
-            const coords = this.latLngToVector3(pos.lat, pos.lng, 61);
-            point.position.copy(coords);
-            
-            this.globe.add(point);
-            this.points.push(point);
+            if (isMe) {
+                // Me is a green flag marker (Base64 SVG for reliability)
+                const flagSvg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwZmY4OCI+PHBhdGggZD0iTTE0LjQgNkwxNCA0SDV2MTdoMnYtN2g1LjZsLjQgMmg3VjZ6Ii8+PC9zdmc+";
+                const textureLoader = new THREE.TextureLoader();
+                const spriteMaterial = new THREE.SpriteMaterial({ 
+                    map: textureLoader.load(flagSvg),
+                    transparent: true,
+                    depthTest: false
+                });
+                const marker = new THREE.Sprite(spriteMaterial);
+                marker.scale.set(8, 8, 1);
+                
+                const coords = this.latLngToVector3(pos.lat, pos.lng, 62);
+                marker.position.copy(coords);
+                
+                this.globe.add(marker);
+                this.points.push(marker);
+            } else {
+                // Others are red dots
+                const pointGeometry = new THREE.SphereGeometry(1.5, 12, 12);
+                const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xff3366 });
+                const point = new THREE.Mesh(pointGeometry, pointMaterial);
+                
+                const coords = this.latLngToVector3(pos.lat, pos.lng, 61);
+                point.position.copy(coords);
+                
+                this.globe.add(point);
+                this.points.push(point);
+            }
         });
     }
 
@@ -119,9 +148,8 @@ export class EarthMap {
     }
     
     focusUser(lat, lng) {
-        const coords = this.latLngToVector3(lat, lng, 105); // Zoomed in focus (globe R=60)
+        const coords = this.latLngToVector3(lat, lng, 105);
         
-        // CRITICAL: Must rotate the target coordinates by the same angle the globe is rotated
         const angle = this.globe.rotation.y;
         const cosA = Math.cos(angle);
         const sinA = Math.sin(angle);
@@ -129,10 +157,8 @@ export class EarthMap {
         const rx = coords.x * cosA - coords.z * sinA;
         const rz = coords.x * sinA + coords.z * cosA;
         
-        this.camera.position.set(rx, coords.y, rz);
-        this.camera.lookAt(0, 0, 0);
-        
+        this.targetCameraPos = new THREE.Vector3(rx, coords.y, rz);
+        this.isFocusing = true;
         this.controls.autoRotate = false;
-        this.controls.update();
     }
 }

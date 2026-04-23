@@ -1031,7 +1031,25 @@ async function updateLocation(req, res, user) {
         });
 
         if (error) throw error;
-        return res.status(200).json(data);
+
+        // Fetch all active users with locations for the globe dots
+        const { data: pointsRes } = await supabase
+            .from('users')
+            .select('id, location')
+            .not('location', 'is', null)
+            .gte('last_active', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+        const points = (pointsRes || []).map(u => ({
+            id: u.id,
+            lat: u.location.coordinates[1],
+            lng: u.location.coordinates[0]
+        }));
+
+        return res.status(200).json({
+            ...(data || {}),
+            success: true,
+            points
+        });
     } catch (error) {
         console.error('updateLocation error:', error);
         return res.status(500).json({ success: false, error: 'Database error' });

@@ -496,7 +496,13 @@ const App = {
             const el = document.createElement('div');
             el.className = 'clay-list-item';
             
+            // Support distance_km (from RPC), distance_meters, and other variants
             let meters = user.distance_meters || user.distance || user.dist || user.proximity;
+            
+            // RPC returns distance_km — convert to meters
+            if ((meters === undefined || meters === null) && user.distance_km !== undefined) {
+                meters = user.distance_km * 1000;
+            }
             
             // Ultimate fallback: calculate on client side if server failed
             if ((meters === undefined || meters === null || isNaN(meters)) && this.currentLat && (user.lat || user.latitude)) {

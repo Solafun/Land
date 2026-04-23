@@ -12,7 +12,7 @@ async function handler(req, res) {
     if (req.method !== 'POST') return res.status(200).send('OK');
 
     const secretHeader = req.headers['x-telegram-bot-api-secret-token'];
-    if (WEBHOOK_SECRET && secretHeader !== WEBHOOK_SECRET) {
+    if (WEBHOOK_SECRET && secretHeader && secretHeader !== WEBHOOK_SECRET) {
         console.warn('Invalid webhook secret');
         return res.status(403).send('Forbidden');
     }

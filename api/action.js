@@ -1069,10 +1069,14 @@ async function updateLocation(req, res, user) {
 
         console.log(`Points count: ${points.length}, user.id: ${user.id}`);
 
+        // RPC returns { success, country, nearby: [...] } — extract the array
+        const nearbyUsers = data?.nearby || data || [];
+        console.log(`Nearby users count: ${Array.isArray(nearbyUsers) ? nearbyUsers.length : 'not array'}`);
+
         return res.status(200).json({
             success: true,
             userId: user.id,
-            nearby: data,
+            nearby: Array.isArray(nearbyUsers) ? nearbyUsers : [],
             points,
             country
         });

@@ -66,12 +66,7 @@ function secureRandomInt(min, max) {
     return crypto.randomInt(min, max);
 }
 
-function generateVerificationCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = 'STARS-';
-    for (let i = 0; i < 6; i++) code += chars[crypto.randomInt(0, chars.length)];
-    return code;
-}
+
 
 function getLocaleFromLanguage(langCode) {
     const map = {
@@ -211,6 +206,7 @@ async function getInternalUserData(user) {
             username: userData.username,
             threads_username: userData.threads_username || null,
             threads_verified: userData.threads_verified || false,
+            threads_avatar_url: userData.threads_avatar_url,
             verification_code: userData.verification_code || null,
             verification_status: userData.verification_status || 'none',
             country: userData.country || null,
@@ -408,14 +404,23 @@ async function searchThreads(req, res, user) {
     const { nickname } = req.body;
     const clean = nickname.replace(/^@/, '').trim().toLowerCase();
 
-    const { data: existing } = await supabase.from('participants').select('id, nickname, avatar_url, score').eq('nickname', clean).single();
+    // Search in users table by threads_username
+    const { data: existing } = await supabase
+        .from('users')
+        .select('id, threads_username, threads_avatar_url')
+        .eq('threads_username', clean)
+        .single();
+
     const threadResult = await fetchFromThreads(clean);
 
     if (existing) {
-        if (threadResult.exists && threadResult.avatar && threadResult.avatar !== existing.avatar_url) {
-            await supabase.from('participants').update({ avatar_url: threadResult.avatar }).eq('id', existing.id);
-        }
-        return res.status(200).json({ success: true, found: true, already_exists: true, nickname: clean, avatar_url: threadResult.avatar || existing.avatar_url, score: existing.score });
+        return res.status(200).json({ 
+            success: true, 
+            found: true, 
+            already_exists: true, 
+            nickname: existing.threads_username, 
+            avatar_url: existing.threads_avatar_url || threadResult.avatar 
+        });
     }
 
     if (threadResult.exists) return res.status(200).json({ success: true, found: true, already_exists: false, nickname: clean, avatar_url: threadResult.avatar });
@@ -463,148 +468,21 @@ async function checkSubscription(req, res, user) {
     return res.status(200).json({ success: true, subscribed: data });
 }
 
-async function startVerification(req, res, user) {
-    const { nickname } = req.body;
-    if (!nickname) return res.status(400).json({ success: false, error: 'Nickname required' });
-    const clean = nickname.replace(/^@/, '').trim().toLowerCase();
 
-    // Check not already claimed by another user
-    const { data: existingOwner } = await supabase
-        .from('users')
-        .select('id')
-        .eq('threads_username', clean)
-        .neq('id', user.id)
-        .single();
-
-    if (existingOwner) {
-        return res.status(200).json({ success: false, error: 'already_claimed' });
-    }
-
-    // Check Threads profile exists
-    const threadResult = await fetchFromThreads(clean);
-    if (!threadResult.exists) {
-        return res.status(200).json({ success: false, error: 'no_threads_profile' });
-    }
-
-    // Generate or reuse existing code
-    const { data: existingUser } = await supabase
-        .from('users')
-        .select('verification_code, threads_username')
-        .eq('id', user.id)
-        .single();
-
-    // Reuse code if same nickname, else generate new
-    let code = existingUser?.verification_code;
-    if (!code || existingUser?.threads_username !== clean) {
-        code = generateVerificationCode();
-    }
-
-    await supabase.from('users').update({
-        threads_username: clean,
-        verification_code: code,
-        verification_status: 'pending'
-    }).eq('id', user.id);
-
-    return res.status(200).json({ success: true, code, threads_username: clean });
-}
-
-async function checkVerification(req, res, user) {
-    // Load user's pending verification data
-    const { data: userData } = await supabase
-        .from('users')
-        .select('threads_username, verification_code, verification_status, threads_verified')
-        .eq('id', user.id)
-        .single();
-
-    if (!userData?.threads_username || !userData?.verification_code) {
-        return res.status(200).json({ success: false, error: 'no_pending_verification' });
-    }
-
-    if (userData.threads_verified) {
-        return res.status(200).json({ success: true, verified: true, already: true });
-    }
-
-    // Fetch Threads profile page and look for the verification code
-    const threadResult = await fetchFromThreads(userData.threads_username);
-    let codeFound = false;
-
-    if (threadResult.exists) {
-        // Also try to fetch the raw HTML to search for the code in posts/bio
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const response = await fetch(`https://www.threads.com/@${userData.threads_username}`, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                },
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            const html = await response.text();
-            codeFound = html.includes(userData.verification_code);
-        } catch (e) {
-            codeFound = false;
-        }
-    }
-
-    if (!codeFound) {
-        return res.status(200).json({ success: true, verified: false });
-    }
-
-    // Mark as verified
-    await supabase.from('users').update({
-        threads_verified: true,
-        verification_status: 'verified'
-    }).eq('id', user.id);
-
-    // Link participant if one exists with this nickname or create new one
-    const { data: existingParticipant } = await supabase.from('participants')
-        .select('id')
-        .eq('nickname', userData.threads_username)
-        .single();
-
-    if (existingParticipant) {
-        await supabase.from('participants')
-            .update({ owner_telegram_id: user.id })
-            .eq('id', existingParticipant.id);
-    } else if (threadResult.exists && threadResult.avatar) {
-        await supabase.from('participants')
-            .insert({
-                nickname: userData.threads_username,
-                avatar_url: threadResult.avatar,
-                owner_telegram_id: user.id,
-                added_by: user.id
-            });
-    }
-
-    return res.status(200).json({ success: true, verified: true });
-}
-
-async function disconnectThreads(req, res, user) {
-    const { error } = await supabase.from('users').update({
-        threads_username: null,
-        threads_verified: false,
-        verification_code: null,
-        verification_status: 'none'
-    }).eq('id', user.id);
-
-    if (error) {
-        console.error('Disconnect Threads error:', error);
-        return res.status(500).json({ success: false, error: 'Database error' });
-    }
-
-    return res.status(200).json({ success: true });
-}
 
 async function saveNickname(req, res, user) {
     const { nickname } = req.body;
     if (!nickname) return res.status(400).json({ success: false, error: 'Nickname required' });
     const clean = nickname.replace(/^@/, '').trim().toLowerCase();
 
+    // Fetch avatar from Threads
+    const threadResult = await fetchFromThreads(clean);
+    const avatarUrl = threadResult.exists ? threadResult.avatar : null;
+
     // Just save as verified as requested
     const { error } = await supabase.from('users').update({
         threads_username: clean,
+        threads_avatar_url: avatarUrl,
         threads_verified: true,
         verification_status: 'verified'
     }).eq('id', user.id);
@@ -614,7 +492,7 @@ async function saveNickname(req, res, user) {
         return res.status(500).json({ success: false, error: 'Database error' });
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, avatar_url: avatarUrl });
 }
 
 // ============================================
@@ -1070,10 +948,9 @@ async function updateLocation(req, res, user) {
             // Columns may not exist — that's fine, RPC handles geometry
         }
 
-        // Fetch all active users with locations for the globe dots
         const { data: pointsRes, error: pointsError } = await supabase
             .from('users')
-            .select('id, lat, lng')
+            .select('id, lat, lng, threads_username, threads_avatar_url')
             .not('lat', 'is', null)
             .not('lng', 'is', null)
             .limit(200);
@@ -1084,7 +961,9 @@ async function updateLocation(req, res, user) {
         const points = (pointsRes || []).map(u => ({
             id: u.id,
             lat: parseFloat(u.lat),
-            lng: parseFloat(u.lng)
+            lng: parseFloat(u.lng),
+            nickname: u.threads_username,
+            avatar_url: u.threads_avatar_url
         }));
 
         console.log(`Points count: ${points.length}, user.id: ${user.id}`);
@@ -1114,7 +993,7 @@ async function getMapPoints(req, res, user) {
         // Fetch all active users with coordinates for the globe dots
         const { data: pointsRes } = await supabase
             .from('users')
-            .select('id, lat, lng')
+            .select('id, lat, lng, threads_username, threads_avatar_url')
             .not('lat', 'is', null)
             .not('lng', 'is', null)
             .limit(200);
@@ -1122,7 +1001,9 @@ async function getMapPoints(req, res, user) {
         const points = (pointsRes || []).map(u => ({
             id: u.id,
             lat: parseFloat(u.lat),
-            lng: parseFloat(u.lng)
+            lng: parseFloat(u.lng),
+            nickname: u.threads_username,
+            avatar_url: u.threads_avatar_url
         }));
 
         return res.status(200).json({
@@ -1193,9 +1074,7 @@ module.exports = async function handler(req, res) {
             case 'add-participant': return await addParticipant(req, res, user);
             case 'toggle-subscription': return await toggleSubscription(req, res, user);
             case 'check-subscription': return await checkSubscription(req, res, user);
-            case 'start-verification': return await startVerification(req, res, user);
-            case 'check-verification': return await checkVerification(req, res, user);
-            case 'disconnect-threads': return await disconnectThreads(req, res, user);
+
             case 'save-nickname': return await saveNickname(req, res, user);
             case 'update-location': return await updateLocation(req, res, user);
             case 'get-map-users': return await getMapPoints(req, res, user);

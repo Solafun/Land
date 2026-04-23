@@ -1010,7 +1010,14 @@ async function updateLocation(req, res, user) {
             });
             if (geoRes.ok) {
                 const geoData = await geoRes.json();
-                country = geoData.address.country || geoData.address.state || geoData.address.region || geoData.display_name.split(',').pop().trim();
+                const addr = geoData.address;
+                const city = addr.city || addr.town || addr.village || addr.suburb || addr.city_district;
+                const countryName = addr.country;
+                if (city && countryName) {
+                    country = `${city}, ${countryName}`;
+                } else {
+                    country = countryName || addr.state || addr.region || geoData.display_name.split(',').pop().trim();
+                }
             }
         } catch (e) {
             console.warn('Country lookup failed:', e.message);

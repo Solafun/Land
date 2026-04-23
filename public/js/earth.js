@@ -112,7 +112,7 @@ export class EarthMap {
     }
     
     focusUser(lat, lng) {
-        const coords = this.latLngToVector3(lat, lng, 140); // Closer for smaller globe
+        const coords = this.latLngToVector3(lat, lng, 110); // Much closer zoom (globe is 60)
         this.camera.position.copy(coords);
         this.controls.autoRotate = false;
         this.controls.update();

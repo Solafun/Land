@@ -483,7 +483,7 @@ const App = {
             const el = document.createElement('div');
             el.className = 'clay-list-item';
             
-            const dist = this.formatDistance(user.distance_meters || user.distance);
+            const dist = this.formatDistance(user.distance_meters || user.distance || user.dist || user.proximity);
 
             el.innerHTML = `
                 <div class="leaderboard-item-link" onclick="App.viewNearbyUser('${user.username || user.id}')">
@@ -506,6 +506,7 @@ const App = {
 
     formatDistance(meters) {
         if (meters === undefined || meters === null || isNaN(meters)) return '...';
+        // Handle if incoming value is already in km
         if (meters < 1000) return Math.round(meters) + ' m';
         return (meters / 1000).toFixed(1) + ' km';
     },

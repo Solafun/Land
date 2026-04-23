@@ -111,31 +111,21 @@ export class EarthMap {
             const isMe = String(pos.id) === String(currentUserId);
             
             if (isMe) {
-                // Me is a green flag marker (Base64 SVG for reliability)
-                const flagSvg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwZmY4OCI+PHBhdGggZD0iTTE0LjQgNkwxNCA0SDV2MTdoMnYtN2g1LjZsLjQgMmg3VjZ6Ii8+PC9zdmc+";
-                const textureLoader = new THREE.TextureLoader();
-                const spriteMaterial = new THREE.SpriteMaterial({ 
-                    map: textureLoader.load(flagSvg),
-                    transparent: true,
-                    depthTest: false
-                });
-                const marker = new THREE.Sprite(spriteMaterial);
-                marker.scale.set(8, 8, 1);
-                
-                const coords = this.latLngToVector3(pos.lat, pos.lng, 62);
+                // Me is a bright green sphere (highly visible & reliable)
+                const geometry = new THREE.SphereGeometry(1.8, 16, 16);
+                const material = new THREE.MeshBasicMaterial({ color: 0x00FF88 });
+                const marker = new THREE.Mesh(geometry, material);
+                const coords = this.latLngToVector3(pos.lat, pos.lng, 61.5);
                 marker.position.copy(coords);
-                
                 this.globe.add(marker);
                 this.points.push(marker);
             } else {
-                // Others are red dots
+                // Others are pink/red spheres
                 const pointGeometry = new THREE.SphereGeometry(1.5, 12, 12);
-                const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xff3366 });
+                const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xFF3366 });
                 const point = new THREE.Mesh(pointGeometry, pointMaterial);
-                
                 const coords = this.latLngToVector3(pos.lat, pos.lng, 61);
                 point.position.copy(coords);
-                
                 this.globe.add(point);
                 this.points.push(point);
             }

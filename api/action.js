@@ -1042,7 +1042,6 @@ async function updateLocation(req, res, user) {
         const { data: pointsRes } = await supabase
             .from('users')
             .select('id, location, lat, lng')
-            .not('location', 'is', null)
             .limit(200);
 
         const points = (pointsRes || []).map(u => {
@@ -1077,15 +1076,17 @@ async function getMapPoints(req, res, user) {
         const { data: pointsRes } = await supabase
             .from('users')
             .select('id, location, lat, lng')
-            .not('location', 'is', null)
-            .limit(100);
-            // Relaxed filter to ensure points appear
+            .limit(200);
 
-        const points = (pointsRes || []).map(u => ({
-            id: u.id,
-            lat: u.location.coordinates[1],
-            lng: u.location.coordinates[0]
-        }));
+        const points = (pointsRes || []).map(u => {
+            if (u.location && u.location.coordinates) {
+                return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
+            }
+            if (u.lat !== undefined && u.lng !== undefined) {
+                return { id: u.id, lat: u.lat, lng: u.lng };
+            }
+            return null;
+        }).filter(p => p !== null);
 
         // Return a combined object with success and points
         return res.status(200).json({

@@ -180,7 +180,6 @@ async function getInternalUserData(user) {
             language_code: languageCode,
             locale: getLocaleFromLanguage(languageCode),
             is_premium: user.is_premium || false,
-            last_active: new Date().toISOString(),
             updated_at: new Date().toISOString()
         }, { onConflict: 'id' })
         .select()

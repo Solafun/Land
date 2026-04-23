@@ -440,10 +440,13 @@ const App = {
                     (p) => update(p.coords.latitude, p.coords.longitude, 'Browser'),
                     (err) => {
                         console.error('[GEO] Browser failed:', err);
-                        document.getElementById('location-text').textContent = 'Location denied';
+                        const el = document.getElementById('location-text');
+                        if (el && el.textContent.includes('Detecting')) el.textContent = 'Location denied';
                     },
-                    { enableHighAccuracy: true, timeout: 5000 }
+                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
                 );
+            } else {
+                console.log('[GEO] Browser geolocation not supported');
             }
         };
 
@@ -452,8 +455,12 @@ const App = {
             console.log('[GEO] Using Telegram LocationManager...');
             const lm = T.LocationManager;
             
+            let telegramResolved = false;
+
             const startSearch = () => {
                 lm.getLocation((data) => {
+                    if (telegramResolved) return;
+                    telegramResolved = true;
                     if (data && data.latitude) {
                         update(data.latitude, data.longitude, 'Telegram');
                     } else {
@@ -463,10 +470,20 @@ const App = {
             };
 
             if (!lm.isInited) {
-                lm.init(() => startSearch());
-            } else {
-                startSearch();
+                lm.init();
             }
+            
+            startSearch();
+
+            // Fallback if Telegram LocationManager ignores us entirely
+            setTimeout(() => {
+                if (!telegramResolved && !this.currentLat) {
+                    telegramResolved = true;
+                    console.log('[GEO] Telegram LM timed out, falling back wrapper...');
+                    tryBrowser('Telegram timeout');
+                }
+            }, 3000);
+            
         } else {
             tryBrowser('Telegram LM not available');
         }

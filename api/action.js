@@ -1024,7 +1024,8 @@ async function updateLocation(req, res, user) {
             threads_avatar_url: u.threads_avatar_url,
             distance_meters: u.distance_meters,
             lat: u.lat,
-            lng: u.lng
+            lng: u.lng,
+            country: u.country
         }));
 
         return res.status(200).json({
@@ -1088,30 +1089,47 @@ async function getNearbyHandler(req, res, user) {
             });
             if (!error) nearby = (data || []);
         } else {
-            // Just fetch people near the user's LAST KNOWN location (if exists) or just generic recent users
+            // Fetch people near the user's LAST KNOWN location without updating the DB
             const { data: userData } = await supabase.from('users').select('lat, lng').eq('id', user.id).single();
-            const uLat = userData?.lat || 0;
-            const uLng = userData?.lng || 0;
+            const uLat = userData?.lat;
+            const uLng = userData?.lng;
             
-            const { data, error } = await supabase.rpc('update_location_and_get_nearby', {
-                p_user_id: user.id,
-                p_lat: uLat,
-                p_lng: uLng,
-                p_country: 'Last Known'
-            });
-            // We still use the RPC but with last known coords to avoid overwriting with 0,0 
-            // Wait, update_location_and_get_nearby UPDATES. I should avoid it.
+            if (uLat && uLng && uLat !== 0) {
+                // Manual distance calculation in Postgres using pure SQL since PostGIS is removed
+                // Avoiding the RPC because the RPC updates the user's location
+                const { data: recent, error: recentErr } = await supabase
+                    .from('users')
+                    .select('id, threads_username, threads_avatar_url, lat, lng, country')
+                    .neq('id', user.id)
+                    .not('lat', 'is', null)
+                    .limit(50);
+                
+                if (!recentErr) {
+                    nearby = (recent || []).map(u => {
+                        // Earth radius in meters = 6371000
+                        // Simplified equirectangular approximation for speed
+                        const lat1 = uLat * Math.PI / 180;
+                        const lat2 = u.lat * Math.PI / 180;
+                        const dLat = (u.lat - uLat) * Math.PI / 180;
+                        const dLon = (u.lng - uLng) * Math.PI / 180;
+                        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                                Math.cos(lat1) * Math.cos(lat2) *
+                                Math.sin(dLon/2) * Math.sin(dLon/2);
+                        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                        const distMeters = 6371000 * c;
+                        
+                        return { ...u, distance_meters: distMeters };
+                    }).sort((a, b) => a.distance_meters - b.distance_meters).slice(0, 50);
+                }
+            }
             
-            // Let's do a plain select for "near me" if no coords provided
-            if (error || !userData?.lat) {
+            if (!nearby.length) {
                 const { data: recent } = await supabase
                     .from('users')
                     .select('id, threads_username, threads_avatar_url, lat, lng, country')
                     .not('lat', 'is', null)
                     .limit(20);
-                nearby = (recent || []).map(u => ({ ...u, distance_meters: 0 }));
-            } else {
-                nearby = data || [];
+                nearby = (recent || []).map(u => ({ ...u, distance_meters: null })); // null means unknown
             }
         }
 

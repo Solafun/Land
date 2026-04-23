@@ -426,6 +426,17 @@ const App = {
                 if (data.country) {
                     if (locText) locText.textContent = `Location: ${data.country}`;
                     if (profLocText) profLocText.textContent = data.country;
+                } else if (data.city) {
+                     if (locText) locText.textContent = `Location: ${data.city}`;
+                     if (profLocText) profLocText.textContent = data.city;
+                }
+                
+                // Update online count
+                const count = document.getElementById('active-users-count');
+                if (count && data.points) {
+                    count.textContent = data.points.length;
+                    const onlineBadge = document.querySelector('.online-badge span');
+                    if (onlineBadge) onlineBadge.textContent = `${data.points.length} Online`;
                 }
 
                 if (statusPanel && !statusPanel.dataset.bound) {

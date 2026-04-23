@@ -1002,7 +1002,7 @@ async function updateLocation(req, res, user) {
 
     try {
         // Fetch country name via reverse geocoding
-        let country = null;
+        let country = 'Earth';
         try {
             // Using Nominatim as it's more accurate for country/region detection
             const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {

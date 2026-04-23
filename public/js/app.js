@@ -97,24 +97,56 @@ const App = {
 
     setAppMode(mode) {
         this.appMode = mode;
+        
+        // Block interaction if not verified
+        const needsOnboarding = this.userData && !this.userData.threads_verified;
+        
         document.getElementById('maintenance-stub').classList.toggle('hidden', mode !== 'maintenance');
         document.getElementById('verification-stub').classList.toggle('hidden', mode !== 'verify_only');
+        document.getElementById('onboarding-stub').classList.toggle('hidden', !needsOnboarding || mode === 'maintenance');
 
         const blockedStub = document.getElementById('blocked-stub');
         if (blockedStub) blockedStub.classList.toggle('hidden', mode !== 'blocked');
 
-        document.getElementById('main-app-content')?.classList.toggle('hidden', mode !== 'active');
+        // Show content only if active AND verified
+        const showContent = mode === 'active' && !needsOnboarding;
+        document.getElementById('main-app-content')?.classList.toggle('hidden', !showContent);
 
-        if (mode === 'maintenance' || mode === 'verify_only' || mode === 'blocked') {
+        if (mode === 'maintenance' || mode === 'verify_only' || mode === 'blocked' || needsOnboarding) {
             document.querySelector('.clay-nav')?.classList.add('hidden');
-            // If verify_only and already verified, we might want to show a success message instead of the form
-            if (mode === 'verify_only' && this.userData?.threads_verified) {
-                this.showVerificationOnlySuccess();
-            } else if (mode === 'verify_only') {
-                this.initStandaloneVerify();
-            }
         } else {
             document.querySelector('.clay-nav')?.classList.remove('hidden');
+        }
+    },
+
+    async submitOnboarding() {
+        const input = document.getElementById('onboarding-nick-input');
+        const btn = document.getElementById('onboarding-submit-btn');
+        const errorEl = document.getElementById('onboarding-error');
+        const nickname = input.value.trim();
+
+        if (!nickname || nickname.length < 3) {
+            if (errorEl) errorEl.textContent = 'Введите корректный никнейм';
+            return;
+        }
+
+        btn.disabled = true;
+        if (errorEl) errorEl.textContent = '';
+
+        try {
+            const data = await this.apiRequest('save-nickname', { nickname });
+            if (data.success) {
+                this.userData.threads_verified = true;
+                this.userData.threads_username = nickname.replace(/^@/, '').toLowerCase();
+                this.setAppMode(this.appMode);
+                this.showToast('Успешно!', 'success');
+            } else {
+                if (errorEl) errorEl.textContent = data.error || 'Ошибка сохранения';
+                btn.disabled = false;
+            }
+        } catch (e) {
+            if (errorEl) errorEl.textContent = 'Ошибка сети';
+            btn.disabled = false;
         }
     },
 
@@ -256,6 +288,12 @@ const App = {
         });
         document.getElementById('verify-publish-btn')?.addEventListener('click', () => this.openThreadsPublish());
         document.getElementById('verify-check-btn')?.addEventListener('click', () => this.checkVerification());
+
+        // Onboarding Bindings
+        document.getElementById('onboarding-submit-btn')?.addEventListener('click', () => this.submitOnboarding());
+        document.getElementById('onboarding-nick-input')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.target.blur(); this.submitOnboarding(); }
+        });
 
         // Standalone Verification Stub Bindings
         document.getElementById('vo-search-btn')?.addEventListener('click', () => this.searchThreadsForVerify(true));

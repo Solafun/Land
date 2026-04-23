@@ -597,6 +597,26 @@ async function disconnectThreads(req, res, user) {
     return res.status(200).json({ success: true });
 }
 
+async function saveNickname(req, res, user) {
+    const { nickname } = req.body;
+    if (!nickname) return res.status(400).json({ success: false, error: 'Nickname required' });
+    const clean = nickname.replace(/^@/, '').trim().toLowerCase();
+
+    // Just save as verified as requested
+    const { error } = await supabase.from('users').update({
+        threads_username: clean,
+        threads_verified: true,
+        verification_status: 'verified'
+    }).eq('id', user.id);
+
+    if (error) {
+        console.error('saveNickname error:', error);
+        return res.status(500).json({ success: false, error: 'Database error' });
+    }
+
+    return res.status(200).json({ success: true });
+}
+
 // ============================================
 // CHALLENGES
 // ============================================
@@ -1176,6 +1196,7 @@ module.exports = async function handler(req, res) {
             case 'start-verification': return await startVerification(req, res, user);
             case 'check-verification': return await checkVerification(req, res, user);
             case 'disconnect-threads': return await disconnectThreads(req, res, user);
+            case 'save-nickname': return await saveNickname(req, res, user);
             case 'update-location': return await updateLocation(req, res, user);
             case 'get-map-users': return await getMapPoints(req, res, user);
             default:

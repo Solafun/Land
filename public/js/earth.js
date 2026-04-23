@@ -115,7 +115,7 @@ export class EarthMap {
                 const geometry = new THREE.SphereGeometry(1.8, 16, 16);
                 const material = new THREE.MeshBasicMaterial({ color: 0x00FF88 });
                 const marker = new THREE.Mesh(geometry, material);
-                const coords = this.latLngToVector3(pos.lat, pos.lng, 61.5);
+                const coords = this.latLngToVector3(pos.lat, pos.lng, 62.5); // Elevated
                 marker.position.copy(coords);
                 this.globe.add(marker);
                 this.points.push(marker);
@@ -124,7 +124,7 @@ export class EarthMap {
                 const pointGeometry = new THREE.SphereGeometry(1.5, 12, 12);
                 const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xFF3366 });
                 const point = new THREE.Mesh(pointGeometry, pointMaterial);
-                const coords = this.latLngToVector3(pos.lat, pos.lng, 61);
+                const coords = this.latLngToVector3(pos.lat, pos.lng, 61.5); // Elevated
                 point.position.copy(coords);
                 this.globe.add(point);
                 this.points.push(point);

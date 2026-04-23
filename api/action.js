@@ -1036,20 +1036,33 @@ async function updateLocation(req, res, user) {
             throw error;
         }
 
+        // BACKUP: Explicitly update flat lat/lng columns just in case the RPC only touches the geometry column
+        await supabase
+            .from('users')
+            .update({ 
+                lat: parseFloat(lat), 
+                lng: parseFloat(lng),
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+
         const userData = await getInternalUserData(user);
 
         // Fetch all active users with locations for the globe dots
+        // We now fetch both formats to be extremely safe
         const { data: pointsRes } = await supabase
             .from('users')
-            .select('id, location, lat, lng')
+            .select('id, lat, lng, location')
             .limit(200);
 
         const points = (pointsRes || []).map(u => {
+            // Priority 1: Direct lat/lng columns (most reliable now)
+            if (u.lat !== undefined && u.lat !== null && u.lng !== undefined && u.lng !== null) {
+                return { id: u.id, lat: parseFloat(u.lat), lng: parseFloat(u.lng) };
+            }
+            // Priority 2: Location object
             if (u.location && u.location.coordinates) {
                 return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
-            }
-            if (u.lat !== undefined && u.lng !== undefined) {
-                return { id: u.id, lat: u.lat, lng: u.lng };
             }
             return null;
         }).filter(p => p !== null);
@@ -1075,15 +1088,15 @@ async function getMapPoints(req, res, user) {
         // Fetch all active users with locations for the globe dots
         const { data: pointsRes } = await supabase
             .from('users')
-            .select('id, location, lat, lng')
+            .select('id, lat, lng, location')
             .limit(200);
 
         const points = (pointsRes || []).map(u => {
+            if (u.lat !== undefined && u.lat !== null && u.lng !== undefined && u.lng !== null) {
+                return { id: u.id, lat: parseFloat(u.lat), lng: parseFloat(u.lng) };
+            }
             if (u.location && u.location.coordinates) {
                 return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
-            }
-            if (u.lat !== undefined && u.lng !== undefined) {
-                return { id: u.id, lat: u.lat, lng: u.lng };
             }
             return null;
         }).filter(p => p !== null);
@@ -1140,7 +1153,7 @@ module.exports = async function handler(req, res) {
                 language_code: 'en'
             };
         }
-
+        
         if (!user) {
             return res.status(401).json({ success: false, error: 'Unauthorized: Invalid Telegram InitData' });
         }

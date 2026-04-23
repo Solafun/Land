@@ -41,10 +41,6 @@ function verifyTelegramData(initData) {
             .update(BOT_TOKEN)
             .digest();
 
-        const calculatedHash = crypto.createHmac('sha256', secretKey)
-            .update(dataCheckString)
-            .digest('hex');
-
         if (calculatedHash !== hash) {
             console.warn('verifyTelegramData: Hash mismatch');
             return null;
@@ -180,7 +176,7 @@ async function getInternalUserData(user) {
             language_code: languageCode,
             locale: getLocaleFromLanguage(languageCode),
             is_premium: user.is_premium || false,
-            last_active_at: new Date().toISOString(),
+            last_active: new Date().toISOString(),
             updated_at: new Date().toISOString()
         }, { onConflict: 'id' })
         .select()
@@ -1054,8 +1050,8 @@ async function updateLocation(req, res, user) {
             country
         });
     } catch (error) {
-        console.error('updateLocation error:', error);
-        return res.status(500).json({ success: false, error: 'Database error' });
+        console.error('updateLocation CRITICAL error:', error);
+        return res.status(500).json({ success: false, error: error.message });
     }
 }
 
@@ -1081,8 +1077,7 @@ async function getMapPoints(req, res, user) {
         return res.status(200).json({
             success: true,
             nearby: data, // RPC returns array of nearby users
-            points,
-            country
+            points
         });
     } catch (error) {
         console.error('getMapPoints error:', error);

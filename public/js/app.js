@@ -404,8 +404,7 @@ const App = {
         };
 
         update();
-        if (this.locationUpdateInterval) clearInterval(this.locationUpdateInterval);
-        this.locationUpdateInterval = setInterval(update, 60000);
+        // Updated: location is now updated only once upon bot entry
     },
 
     async updateUserLocation(lat, lng) {
@@ -413,32 +412,31 @@ const App = {
         this.currentLng = lng;
         try {
             const data = await this.apiRequest('update-location', { lat, lng });
-            if (data.success) {
-                this.renderNearbyList(data.nearby);
-                if (data.points && this.earthMap) {
-                    this.earthMap.setPoints(data.points, this.userData?.id);
-                }
-                
-                // Update country display
-                const statusPanel = document.querySelector('.location-status');
-                const locText = document.getElementById('location-text');
-                const profLocText = document.getElementById('profile-location-text');
-                
-                if (data.country) {
-                    if (locText) locText.textContent = `Location: ${data.country}`;
-                    if (profLocText) profLocText.textContent = data.country;
-                } else if (data.city) {
-                     if (locText) locText.textContent = `Location: ${data.city}`;
-                     if (profLocText) profLocText.textContent = data.city;
-                }
-                
-                // Update online count
-                const count = document.getElementById('active-users-count');
-                if (count && data.points) {
-                    count.textContent = data.points.length;
-                    const onlineBadge = document.querySelector('.online-badge span');
-                    if (onlineBadge) onlineBadge.textContent = `${data.points.length} Online`;
-                }
+                console.log('Location update response:', data);
+                if (data.success) {
+                    if (data.nearby) this.renderNearbyList(data.nearby);
+                    if (data.points && this.earthMap) {
+                        this.earthMap.setPoints(data.points, this.userData?.id);
+                    }
+                    
+                    // Update country display
+                    const statusPanel = document.querySelector('.location-status');
+                    const locText = document.getElementById('location-text');
+                    const profLocText = document.getElementById('profile-location-text');
+                    
+                    if (data.country) {
+                        if (locText) locText.textContent = `Location: ${data.country}`;
+                        if (profLocText) profLocText.textContent = data.country;
+                    } else if (data.city) {
+                         if (locText) locText.textContent = `Location: ${data.city}`;
+                         if (profLocText) profLocText.textContent = data.city;
+                    }
+                    
+                    // Update online count
+                    const count = document.getElementById('active-users-count');
+                    if (count && data.points) {
+                        count.textContent = data.points.length;
+                    }
 
                 if (statusPanel && !statusPanel.dataset.bound) {
                     statusPanel.style.cursor = 'pointer';
@@ -477,7 +475,13 @@ const App = {
         this.lastNearby = nearby;
         this.nearbyLoaded = true;
 
-        if (!nearby || nearby.length === 0) {
+        if (!Array.isArray(nearby)) {
+            console.warn('Nearby data is not an array:', nearby);
+            list.innerHTML = `<div class="empty-state">${I18n.t('no_users_nearby')}</div>`;
+            return;
+        }
+
+        if (nearby.length === 0) {
             list.innerHTML = `<div class="empty-state">${I18n.t('no_users_nearby')}</div>`;
             return;
         }

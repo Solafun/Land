@@ -653,10 +653,16 @@ const App = {
     async loadInitialData() {
         try {
             const data = await this.apiRequest('init-app');
+            console.log('Init data:', data);
+
             if (data.success) {
                 // User UI
                 this.userData = data.user;
                 this.updateProfileUI(data.user);
+
+                // Initial map points and nearby list
+                if (data.nearby) this.renderNearbyList(data.nearby);
+                if (data.points) EarthMap.setPoints(data.points, this.userData.id);
 
                 // History
                 if (data.history) {
@@ -664,10 +670,16 @@ const App = {
                     this.updateHistoryUI();
                 }
 
-                // Initial map points will be loaded by startLocationTracking -> initGeolocation
+                // Important: set the app mode (active, maintenance, or onboarding)
+                this.setAppMode(this.userData.app_mode);
+                
+                // Request location after UI is ready
+                this.requestLocation();
             }
         } catch (error) {
             console.error('Failed to load initial data:', error);
+            // Fallback: remove loading state even on error to show something
+            document.getElementById('app').classList.remove('app-loading');
         }
     },
 

@@ -232,9 +232,27 @@ async function handleInitApp(req, res, user) {
     try {
         const userData = await getInternalUserData(user);
 
+        // Initial nearby and map points
+        const { data: pointsRes } = await supabase
+            .from('users')
+            .select('id, lat, lng, threads_username, threads_avatar_url')
+            .not('lat', 'is', null)
+            .not('lng', 'is', null)
+            .limit(200);
+
+        const points = (pointsRes || []).map(u => ({
+            id: u.id,
+            lat: parseFloat(u.lat),
+            lng: parseFloat(u.lng),
+            nickname: u.threads_username,
+            avatar_url: u.threads_avatar_url
+        }));
+
         return res.status(200).json({
             success: true,
             ...userData,
+            nearby: [],
+            points: points,
             leaderboard: []
         });
     } catch (error) {

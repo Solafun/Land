@@ -605,8 +605,7 @@ const App = {
                     this.updateHistoryUI();
                 }
 
-                // Initial map points
-                this.loadMapPoints();
+                // Initial map points will be loaded by startLocationTracking -> initGeolocation
             }
         } catch (error) {
             console.error('Failed to load initial data:', error);

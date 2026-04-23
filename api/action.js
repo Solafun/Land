@@ -1135,6 +1135,9 @@ module.exports = async function handler(req, res) {
             return res.status(401).json({ success: false, error: 'Unauthorized: Invalid Telegram InitData' });
         }
 
+        // Detailed logging for visibility
+        console.log(`[ACTION] ${action} | User: @${user.username || user.id} | At: ${new Date().toISOString()}`);
+
         // Роутинг
         switch (action) {
             case 'init-app': return await handleInitApp(req, res, user);

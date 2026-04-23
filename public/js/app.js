@@ -412,6 +412,9 @@ const App = {
             const data = await this.apiRequest('update-location', { lat, lng });
             if (data.success) {
                 this.renderNearbyList(data.nearby);
+                if (data.points && this.earthMap) {
+                    this.earthMap.setPoints(data.points, this.userData?.id);
+                }
                 
                 // Update country display
                 const statusPanel = document.querySelector('.location-status');
@@ -456,7 +459,7 @@ const App = {
         try {
             const data = await this.apiRequest('get-map-users');
             if (data.success && this.earthMap) {
-                this.earthMap.setPoints(data.points);
+                this.earthMap.setPoints(data.points, this.userData?.id);
                 const count = document.getElementById('active-users-count');
                 if (count) count.textContent = data.points.length;
             }
@@ -504,9 +507,18 @@ const App = {
         list.appendChild(fragment);
     },
 
-    formatDistance(meters) {
+    formatDistance(val) {
+        // Handle potential object wrappers from some DB drivers
+        let meters = val;
+        if (typeof val === 'object' && val !== null) {
+            meters = val.meters ?? val.distance ?? val.dist ?? val.val;
+        }
+
         if (meters === undefined || meters === null || isNaN(meters)) return '...';
-        // Handle if incoming value is already in km
+        
+        // If the value is very small (< 0.001), it might be degrees or something went wrong
+        if (meters > 0 && meters < 0.1) return '< 1 m';
+        
         if (meters < 1000) return Math.round(meters) + ' m';
         return (meters / 1000).toFixed(1) + ' km';
     },

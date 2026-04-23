@@ -85,15 +85,27 @@ export class EarthMap {
         this.points.forEach(p => this.scene.remove(p));
         this.points = [];
 
-        const pointGeometry = new THREE.SphereGeometry(1.5, 8, 8);
-        const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xff3366 });
+    setPoints(points, currentUserId) {
+        // Clear old points
+        this.points.forEach(p => {
+            if (p.parent) p.parent.remove(p);
+        });
+        this.points = [];
 
         points.forEach(pos => {
-            const point = new THREE.Mesh(pointGeometry, pointMaterial.clone());
+            const isMe = String(pos.id) === String(currentUserId);
+            
+            // Me is green, others are red
+            const color = isMe ? 0x00ff88 : 0xff3366;
+            const size = isMe ? 2.5 : 1.5; // Make "Me" slightly bigger
+
+            const pointGeometry = new THREE.SphereGeometry(size, 16, 16);
+            const pointMaterial = new THREE.MeshBasicMaterial({ color });
+            
+            const point = new THREE.Mesh(pointGeometry, pointMaterial);
             const coords = this.latLngToVector3(pos.lat, pos.lng, 61);
             point.position.copy(coords);
             
-            // Add a little glow
             this.globe.add(point);
             this.points.push(point);
         });
@@ -112,8 +124,19 @@ export class EarthMap {
     }
     
     focusUser(lat, lng) {
-        const coords = this.latLngToVector3(lat, lng, 110); // Much closer zoom (globe is 60)
-        this.camera.position.copy(coords);
+        const coords = this.latLngToVector3(lat, lng, 105); // Zoomed in focus (globe R=60)
+        
+        // CRITICAL: Must rotate the target coordinates by the same angle the globe is rotated
+        const angle = this.globe.rotation.y;
+        const cosA = Math.cos(angle);
+        const sinA = Math.sin(angle);
+        
+        const rx = coords.x * cosA - coords.z * sinA;
+        const rz = coords.x * sinA + coords.z * cosA;
+        
+        this.camera.position.set(rx, coords.y, rz);
+        this.camera.lookAt(0, 0, 0);
+        
         this.controls.autoRotate = false;
         this.controls.update();
     }

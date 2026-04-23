@@ -139,6 +139,7 @@ const App = {
                 this.userData.threads_verified = true;
                 this.userData.threads_username = nickname.replace(/^@/, '').toLowerCase();
                 this.setAppMode(this.appMode);
+                this.startLocationTracking();
                 this.showToast('Успешно!', 'success');
             } else {
                 if (errorEl) errorEl.textContent = data.error || 'Ошибка сохранения';
@@ -427,29 +428,42 @@ const App = {
         if (this._geoStarted) return;
         this._geoStarted = true;
 
-        if (!navigator.geolocation) {
-            this.showToast('Geolocation is not supported', 'warning');
-            return;
-        }
-
-        const update = () => {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    this.updateUserLocation(position.coords.latitude, position.coords.longitude);
-                    // Let updateUserLocation handle the text update with country name
-                },
-                (err) => {
-                    console.error('Geolocation error:', err);
-                    const locText = document.getElementById('location-text');
-                    if (locText) locText.textContent = 'Location access denied';
-                    this.showToast('Please enable location access', 'warning');
-                },
-                { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
-            );
+        const update = (lat, lng) => {
+            this.updateUserLocation(lat, lng);
         };
 
-        update();
-        // Updated: location is now updated only once upon bot entry
+        const tryTelegram = () => {
+            if (window.Telegram?.WebApp?.LocationManager) {
+                const lm = window.Telegram.WebApp.LocationManager;
+                lm.getLocation((data) => {
+                    if (data && data.latitude) {
+                        update(data.latitude, data.longitude);
+                    } else {
+                        tryBrowser();
+                    }
+                });
+                return true;
+            }
+            return false;
+        };
+
+        const tryBrowser = () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => update(pos.coords.latitude, pos.coords.longitude),
+                    (err) => {
+                        console.error('Geo error:', err);
+                        const el = document.getElementById('location-text');
+                        if (el) el.textContent = 'Location denied';
+                    },
+                    { enableHighAccuracy: false, timeout: 10000 }
+                );
+            }
+        };
+
+        if (!tryTelegram()) {
+            tryBrowser();
+        }
     },
 
     async updateUserLocation(lat, lng) {

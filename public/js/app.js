@@ -410,88 +410,29 @@ const App = {
         if (this._geoStarted) return;
         this._geoStarted = true;
 
-        // FIX: Проверяем координаты перед отправкой — не отправляем нули
-        const update = (lat, lng, source) => {
-            const parsedLat = parseFloat(lat);
-            const parsedLng = parseFloat(lng);
-
-            if (isNaN(parsedLat) || isNaN(parsedLng)) {
-                console.warn(`[GEO] Skipping NaN coordinates from ${source}`);
-                return;
-            }
-            if (parsedLat === 0 && parsedLng === 0) {
-                console.warn(`[GEO] Skipping zero coordinates from ${source}`);
-                return;
-            }
-
-            console.log(`[GEO] SUCCESS via ${source}: ${parsedLat}, ${parsedLng}`);
-            this.updateUserLocation(parsedLat, parsedLng);
-        };
-
-        const tryBrowser = (reason) => {
-            console.log(`[GEO] Trying browser geolocation (Reason: ${reason})...`);
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (p) => update(p.coords.latitude, p.coords.longitude, 'Browser'),
-                    (err) => {
-                        console.error('[GEO] Browser geolocation failed:', err.code, err.message);
-                        const locText = document.getElementById('location-text');
-                        if (locText) locText.textContent = `Error: ${err.message}`;
-                        this.showToast(`Geo Error: ${err.message}`, 'error');
-                    },
-                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
-                );
-            } else {
-                console.warn('[GEO] navigator.geolocation not available');
-                const locText = document.getElementById('location-text');
-                if (locText) locText.textContent = 'Location not supported';
-            }
-        };
-
-        const T = window.Telegram?.WebApp;
-
-        // Use Telegram as primary if available
-        if (T?.LocationManager) {
-            console.log('[GEO] Using Telegram LocationManager...');
-            const lm = T.LocationManager;
-
-            let telegramResolved = false;
-
-            const startSearch = () => {
-                lm.getLocation((data) => {
-                    if (telegramResolved) return;
-                    telegramResolved = true;
-                    if (data && data.latitude != null && data.longitude != null) {
-                        update(data.latitude, data.longitude, 'Telegram');
-                    } else {
-                        console.warn('[GEO] Telegram LocationManager returned empty data');
-                        tryBrowser('Telegram returned empty');
-                    }
-                });
-            };
-
-            if (!lm.isInited) {
-                if (lm.init) {
-                    lm.init(() => startSearch());
-                } else {
-                    startSearch();
-                }
-            } else {
-                startSearch();
-            }
-
-            // Timeout fallback
-            setTimeout(() => {
-                if (!telegramResolved && !this.currentLat) {
-                    telegramResolved = true;
-                    console.warn('[GEO] Telegram LocationManager timed out, falling back to browser...');
-                    tryBrowser('Telegram timeout');
-                }
-            }, 3000);
-
-        } else {
-            tryBrowser('Telegram WebApp not available');
+        if (!navigator.geolocation) {
+            this.showToast('Geolocation is not supported', 'warning');
+            return;
         }
+
+        const update = () => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    this.updateUserLocation(position.coords.latitude, position.coords.longitude);
+                    // Let updateUserLocation handle the text update with country name
+                },
+                (err) => {
+                    console.error('Geolocation error:', err);
+                    const locText = document.getElementById('location-text');
+                    if (locText) locText.textContent = 'Location access denied';
+                    this.showToast('Please enable location access', 'warning');
+                },
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+            );
+        };
+
+        update();
+        // Updated: location is now updated only once upon bot entry
     },
 
     async updateUserLocation(lat, lng) {

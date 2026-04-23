@@ -77,6 +77,8 @@ const App = {
         const startParam = TelegramApp.webapp?.initDataUnsafe?.start_param;
         if (startParam === 'nearby') {
             this.switchTab('nearby');
+        } else {
+            this.switchTab('map');
         }
 
         // Small delay to ensure spheres are visible then hide splash
@@ -192,148 +194,42 @@ const App = {
         });
     },
     bindEvents() {
-        document.querySelectorAll('.nav-item').forEach(btn => {
-            btn.addEventListener('click', (e) => { e.preventDefault(); this.switchTab(btn.dataset.tab); });
-        });
+        const btnToNearby = document.getElementById('switch-to-nearby');
+        const btnToMap = document.getElementById('switch-to-map');
 
-        document.getElementById('spin-btn')?.addEventListener('click', () => this.spin());
-
-        // Star Sparkle
-        document.querySelector('.clay-header .clay-badge')?.addEventListener('click', () => {
-            const star = document.querySelector('.clay-header .clay-star');
-            if (star) {
-                star.classList.remove('sparkle-active');
-                void star.offsetWidth; // Trigger reflow
-                star.classList.add('sparkle-active');
-                TelegramApp.haptic('impact');
-            }
-        });
-
-        document.getElementById('deposit-btn')?.addEventListener('click', () => this.showDepositModal());
-
-        document.querySelectorAll('.deposit-btn').forEach(btn => {
-            btn.addEventListener('click', () => this.createDeposit(parseInt(btn.dataset.amount)));
-        });
-
-        document.getElementById('custom-deposit-btn')?.addEventListener('click', () => {
-            const amount = parseInt(document.getElementById('custom-deposit').value);
-            if (amount > 0 && amount <= 10000) this.createDeposit(amount);
-            else this.showToast(I18n.t('deposit_amount_error'), 'error');
-        });
-
-        const searchBtn = document.getElementById('search-btn');
-        searchBtn?.addEventListener('click', () => {
-            if (searchBtn.textContent === 'X') {
-                document.getElementById('search-input').value = '';
-                document.getElementById('search-result').classList.add('hidden');
-                document.getElementById('search-result').innerHTML = '';
-                searchBtn.textContent = 'Go';
-            } else {
-                this.searchUser();
-            }
-        });
-        document.getElementById('search-input')?.addEventListener('input', (e) => {
-            const val = e.target.value.trim();
-            if (val === '') {
-                document.getElementById('search-result').classList.add('hidden');
-                document.getElementById('search-result').innerHTML = '';
-            }
-            if (searchBtn && searchBtn.textContent === 'X' && val !== '') {
-                searchBtn.textContent = 'Go';
-            }
-        });
-        document.getElementById('search-input')?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.target.blur(); this.searchUser(); }
-        });
-
-        document.getElementById('link-threads-btn')?.addEventListener('click', () => this.openVerifyModal());
-        document.getElementById('verify-only-start-btn')?.addEventListener('click', () => this.openVerifyModal());
-        document.getElementById('verify-modal-close')?.addEventListener('click', () => this.closeVerifyModal());
-        document.getElementById('verify-modal-overlay')?.addEventListener('click', () => this.closeVerifyModal());
-        document.getElementById('verify-search-btn')?.addEventListener('click', () => this.searchThreadsForVerify());
-        document.getElementById('verify-nick-input')?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.target.blur(); this.searchThreadsForVerify(); }
-        });
-        document.getElementById('verify-publish-btn')?.addEventListener('click', () => this.openThreadsPublish());
-        document.getElementById('verify-check-btn')?.addEventListener('click', () => this.checkVerification());
-
-        // Standalone Verification Stub Bindings
-        document.getElementById('vo-search-btn')?.addEventListener('click', () => this.searchThreadsForVerify(true));
-        document.getElementById('vo-nick-input')?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.target.blur(); this.searchThreadsForVerify(true); }
-        });
-        document.getElementById('vo-copy-btn')?.addEventListener('click', () => {
-            const code = this.verifyState.code;
-            if (code) {
-                const text = I18n.t('verify_post_text', { code });
-                this.copyToClipboard(text);
-            }
-        });
-        document.getElementById('vo-publish-btn')?.addEventListener('click', () => this.openThreadsPublish(true));
-        document.getElementById('vo-check-btn')?.addEventListener('click', () => this.checkVerification(true));
-
-        document.querySelectorAll('.modal-close').forEach(btn => {
-            if (btn.id !== 'verify-modal-close') {
-                btn.addEventListener('click', () => this.closeModals());
-            }
-        });
-        document.querySelectorAll('.modal-overlay').forEach(overlay => {
-            if (overlay.id !== 'verify-modal-overlay') {
-                overlay.addEventListener('click', () => this.closeModals());
-            }
-        });
-
-        document.querySelectorAll('.lang-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                I18n.setLanguage(opt.dataset.lang);
-                this.updateSpinButton();
-                if (this.userData) this.updateProfileUI(this.userData);
-                // Re-render search result if visible
-                if (this.lastSearchResult) {
-                    const container = document.getElementById('search-result');
-                    if (container && !container.classList.contains('hidden')) {
-                        this.showSearchFound(this.lastSearchResult, container);
-                    }
-                }
-                TelegramApp.haptic('impact');
+        if (btnToNearby && btnToMap) {
+            btnToNearby.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.switchTab('nearby');
             });
-        });
 
-        document.getElementById('disconnect-threads-btn')?.addEventListener('click', () => this.disconnectThreads());
-        document.getElementById('copy-verify-text-btn')?.addEventListener('click', () => {
-            const code = this.verifyState.code;
-            if (code) {
-                const text = I18n.t('verify_post_text', { code });
-                this.copyToClipboard(text);
-            }
-        });
+            btnToMap.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.switchTab('map');
+            });
+        }
+
+        // Focus on me when clicking location text
+        const focusMeBtn = document.getElementById('focus-my-location');
+        if (focusMeBtn) {
+            focusMeBtn.addEventListener('click', () => {
+                if (this.currentLat && this.currentLng && this.earthMap) {
+                    this.earthMap.focusUser(this.currentLat, this.currentLng);
+                }
+            });
+        }
 
         // iOS Active State Fix
-        // Replaces CSS :active to prevent Safari from tap-highlighting the whole body
         document.body.addEventListener('touchstart', (e) => {
-            const btn = e.target.closest('button, .clay-btn, .clay-icon-btn, .nav-item, .clay-list-item, .modal-close');
+            const btn = e.target.closest('button, .clay-btn, .clay-badge, .clay-list-item');
             if (btn && !btn.disabled) {
                 btn.classList.add('is-active');
             }
         }, { passive: true });
 
         document.body.addEventListener('touchend', (e) => {
-            const btn = e.target.closest('button, .clay-btn, .clay-icon-btn, .nav-item, .clay-list-item, .modal-close');
-            if (btn) {
-                btn.classList.remove('is-active');
-            }
-
-            // Dismiss keyboard on tap outside inputs, but NOT if tapping a button/link/nav
-            const isInput = e.target.closest('input, textarea');
-            const isInteractive = e.target.closest('button, .clay-btn, .clay-icon-btn, .nav-item, [onclick], a');
-
-            if (!isInput && !isInteractive && document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-                document.activeElement.blur();
-            }
-        }, { passive: true });
-
-        document.body.addEventListener('touchcancel', (e) => {
-            document.querySelectorAll('.is-active').forEach(el => el.classList.remove('is-active'));
+            const btn = e.target.closest('button, .clay-btn, .clay-badge, .clay-list-item');
+            if (btn) btn.classList.remove('is-active');
         }, { passive: true });
     },
 
@@ -360,22 +256,28 @@ const App = {
     switchTab(tabId) {
         TelegramApp.haptic('impact');
         document.activeElement?.blur();
-        document.body.classList.remove('keyboard-open');
-        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.toggle('active', tab.id === `${tabId}-tab`));
+        
+        const mapTab = document.getElementById('map-tab');
+        const nearbyTab = document.getElementById('nearby-tab');
+        const btnToNearby = document.getElementById('switch-to-nearby');
+        const btnToMap = document.getElementById('switch-to-map');
+
+        if (tabId === 'nearby') {
+            mapTab.classList.remove('active');
+            nearbyTab.classList.add('active');
+            btnToNearby?.classList.add('hidden');
+            btnToMap?.classList.remove('hidden');
+            if (!this.nearbyLoaded) this.loadNearby();
+            else this.loadNearby(true);
+        } else {
+            nearbyTab.classList.remove('active');
+            mapTab.classList.add('active');
+            btnToMap?.classList.add('hidden');
+            btnToNearby?.classList.remove('hidden');
+            if (this.earthMap) this.earthMap.onWindowResize();
+        }
         
         this.currentTab = tabId;
-
-        if (tabId === 'nearby' && !this.nearbyLoaded) this.loadNearby();
-        else if (tabId === 'nearby') this.loadNearby(true);
-        
-        // Hide/Show background canvas depending on tab
-        const bg = document.getElementById('bg-canvas');
-        if (tabId === 'map') {
-            if (bg) bg.style.opacity = '0';
-        } else {
-            if (bg) bg.style.opacity = '1';
-        }
     },
 
     startLocationTracking() {

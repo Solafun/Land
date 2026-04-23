@@ -63,7 +63,8 @@ export class EarthMap {
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
         this.controls.rotateSpeed = 0.5;
-        this.controls.enableZoom = false; // Disable zoom to keep it consistent
+        this.controls.enableZoom = false; // Disable zoom
+        this.controls.enablePan = false;  // Disable panning (moving it around)
         this.controls.autoRotate = true;
         this.controls.autoRotateSpeed = 0.5;
 

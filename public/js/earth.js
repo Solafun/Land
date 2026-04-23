@@ -50,15 +50,9 @@ export class EarthMap {
         this.globe = new THREE.Mesh(geometry, material);
         this.scene.add(this.globe);
 
-        // Standard orientation: rotate globe so Prime Meridian is visible from start
-        this.globe.rotation.y = -Math.PI / 2;
+        this.globe = new THREE.Mesh(geometry, material);
+        this.scene.add(this.globe);
 
-        // Add a wireframe for a "tech" feel
-        const wireframe = new THREE.Mesh(
-            geometry,
-            new THREE.MeshBasicMaterial({ color: 0x4444ff, wireframe: true, transparent: true, opacity: 0.1 })
-        );
-        this.scene.add(wireframe);
 
         // Controls
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -99,20 +93,17 @@ export class EarthMap {
             point.position.copy(coords);
             
             // Add a little glow
-            const glow = new THREE.PointLight(0xff3366, 1, 10);
-            glow.position.copy(coords);
-            
-            this.scene.add(point);
+            this.globe.add(point);
             this.points.push(point);
         });
     }
 
     latLngToVector3(lat, lng, radius) {
-        // Standard mapping for night texture with 180 degree offset
+        // Precise mapping for Moscow to align with its night lights on the texture
         const phi = (90 - lat) * (Math.PI / 180);
-        const theta = (lng + 180) * (Math.PI / 180);
+        const theta = (lng + 90) * (Math.PI / 180);
 
-        const x = -radius * Math.sin(phi) * Math.cos(theta);
+        const x = radius * Math.sin(phi) * Math.cos(theta);
         const z = radius * Math.sin(phi) * Math.sin(theta);
         const y = radius * Math.cos(phi);
 

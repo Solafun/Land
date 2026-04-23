@@ -27,11 +27,12 @@
 
 <body ontouchstart="">
     <div id="app" class="app-loading">
-        <!-- Fullscreen floating avatars background -->
-        <canvas id="bg-canvas"></canvas>
+        <!-- Globe background -->
+        <div id="globe-background" style="position: fixed; inset: 0; z-index: 0; background: #000;">
+            <div id="globe-container" style="width: 100%; height: 100%;"></div>
+        </div>
             <!-- MAP TAB -->
-            <div id="map-tab" class="tab-content active" style="padding: 0; position: relative; height: 100vh; overflow: hidden;">
-                <div id="globe-container" style="width: 100%; height: 100%;"></div>
+            <div id="map-tab" class="tab-content active" style="padding: 0; position: relative; height: 100vh; overflow: hidden; background: transparent;">
                 
                 <div class="map-overlay-top">
                     <div class="clay-badge">
@@ -48,7 +49,7 @@
             </div>
 
             <!-- NEARBY TAB -->
-            <div id="nearby-tab" class="tab-content">
+            <div id="nearby-tab" class="tab-content" style="background: transparent;">
                 <h2 class="page-title" data-i18n="nearby_title">People Nearby</h2>
 
                 <div class="clay-input-wrapper">
@@ -62,27 +63,6 @@
                 </div>
             </div>
 
-            <!-- PROFILE TAB -->
-            <div id="profile-tab" class="tab-content">
-                <!-- Profile content remains mostly the same, but simplified -->
-                <div class="clay-card profile-main-card">
-                    <div class="avatar-clay" id="user-avatar"></div>
-                    <div class="profile-info-clay">
-                        <div class="username" id="user-name">Loading...</div>
-                        <div id="profile-threads-info" class="threads-profile-badge hidden">
-                            <i class="fa-brands fa-threads threads-logo-icon"></i>
-                            <span id="profile-threads-nick" class="threads-nick"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="clay-card" style="margin-top: 15px;">
-                    <div style="text-align: center; padding: 10px;">
-                        <div class="stat-label">Your Location</div>
-                        <div class="stat-value" id="profile-location-text" style="font-size: 14px; margin-top: 5px;">Not shared</div>
-                    </div>
-                </div>
-            </div>
 
             <!-- NAVIGATION -->
             <nav class="clay-nav">
@@ -91,9 +71,6 @@
                 </button>
                 <button class="nav-item" data-tab="nearby">
                     <span data-i18n="nav_nearby">Nearby</span>
-                </button>
-                <button class="nav-item" data-tab="profile">
-                    <span data-i18n="nav_profile">Profile</span>
                 </button>
             </nav>
         </div>

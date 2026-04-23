@@ -1,4 +1,3 @@
-import { FloatingAvatars } from './floating-avatars.js';
 import { EarthMap } from './earth.js';
 
 const App = {
@@ -50,7 +49,6 @@ const App = {
         document.documentElement.setAttribute('data-theme', 'dark');
 
         // Init background engine
-        this.floatingAvatars = new FloatingAvatars('bg-canvas');
         
         // Init Earth Map
         if (document.getElementById('globe-container')) {
@@ -485,7 +483,7 @@ const App = {
             const el = document.createElement('div');
             el.className = 'clay-list-item';
             
-            const dist = this.formatDistance(user.distance_meters);
+            const dist = this.formatDistance(user.distance_meters || user.distance);
 
             el.innerHTML = `
                 <div class="leaderboard-item-link" onclick="App.viewNearbyUser('${user.username || user.id}')">
@@ -507,6 +505,7 @@ const App = {
     },
 
     formatDistance(meters) {
+        if (meters === undefined || meters === null || isNaN(meters)) return '...';
         if (meters < 1000) return Math.round(meters) + ' m';
         return (meters / 1000).toFixed(1) + ' km';
     },

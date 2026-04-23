@@ -12,11 +12,11 @@
     --text-mutted: #6b6b7b;
     --text-bright: #ffffff;
 
-    --accent: #9d7cff;
-    --accent-light: #c4b5fd;
-    --accent-dark: #b197ff;
-    --accent-glow: rgba(157, 124, 255, 0.3);
-    --accent-glow-strong: rgba(157, 124, 255, 0.5);
+    --accent: #0284c7;
+    --accent-light: #7dd3fc;
+    --accent-dark: #0369a1;
+    --accent-glow: rgba(2, 132, 199, 0.3);
+    --accent-glow-strong: rgba(2, 132, 199, 0.5);
 
     --glass-shadow:
         0 8px 32px rgba(0, 0, 0, 0.5),
@@ -34,8 +34,8 @@
         inset 0 -1px 0 rgba(255, 255, 255, 0.05);
 
     --glass-primary-shadow:
-        0 8px 32px rgba(157, 124, 255, 0.25),
-        0 0 60px rgba(157, 124, 255, 0.1),
+        0 8px 32px rgba(2, 132, 199, 0.25),
+        0 0 60px rgba(2, 132, 199, 0.1),
         inset 0 1px 0 rgba(255, 255, 255, 0.2),
         inset 0 -1px 0 rgba(0, 0, 0, 0.3);
 
@@ -81,8 +81,8 @@ body::before {
     position: fixed;
     inset: 0;
     background:
-        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 70%),
-        radial-gradient(ellipse 60% 80% at 80% 80%, rgba(56, 189, 248, 0.04) 0%, transparent 70%);
+        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(37, 99, 235, 0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 80% at 80% 80%, rgba(14, 165, 233, 0.06) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
 }
@@ -238,12 +238,12 @@ body::before {
 }
 
 .clay-primary {
-    background: linear-gradient(135deg, rgba(157, 124, 255, 0.4), rgba(139, 92, 246, 0.25));
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.4), rgba(14, 165, 233, 0.25));
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     color: white;
     box-shadow: var(--glass-primary-shadow);
-    border: 1px solid rgba(157, 124, 255, 0.3);
+    border: 1px solid rgba(2, 132, 199, 0.3);
 }
 
 /* Glare on primary button */
@@ -262,8 +262,8 @@ body::before {
 
 .clay-primary:active {
     box-shadow:
-        inset 0 2px 12px rgba(76, 29, 149, 0.5),
-        0 0 30px rgba(157, 124, 255, 0.15);
+        inset 0 2px 12px rgba(3, 105, 161, 0.5),
+        0 0 30px rgba(2, 132, 199, 0.15);
     transform: scale(0.97);
 }
 
@@ -295,11 +295,11 @@ body::before {
 }
 
 .clay-icon-btn {
-    background: linear-gradient(135deg, rgba(157, 124, 255, 0.5), rgba(139, 92, 246, 0.3));
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.5), rgba(14, 165, 233, 0.3));
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     color: white;
-    border: 1px solid rgba(157, 124, 255, 0.3);
+    border: 1px solid rgba(2, 132, 199, 0.3);
     border-radius: 99px;
     padding: 16px 20px;
     font-size: 16px;
@@ -1517,7 +1517,7 @@ body.keyboard-open .clay-nav {
 /* ========= MAP OVERLAYS ========= */
 .map-overlay-top {
     position: absolute;
-    top: calc(var(--safe-top) + 20px);
+    top: calc(var(--safe-top) + 15px);
     left: 0;
     right: 0;
     z-index: 100;
@@ -1564,11 +1564,11 @@ body.keyboard-open .clay-nav {
 }
 
 .distance-badge {
-    background: rgba(157, 124, 255, 0.2);
+    background: rgba(2, 132, 199, 0.2);
     color: var(--accent-light);
     padding: 4px 10px;
     border-radius: 99px;
     font-size: 12px;
     font-weight: 700;
-    border: 1px solid rgba(157, 124, 255, 0.3);
+    border: 1px solid rgba(2, 132, 199, 0.3);
 }

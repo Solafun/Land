@@ -426,49 +426,58 @@ const App = {
 
     startLocationTracking() {
         if (this._geoStarted) return;
-        this._geoStarted = true;
-
-        // Set a global timeout to stop "Detecting location" if it hangs
-        setTimeout(() => {
-            const el = document.getElementById('location-text');
-            if (el && el.textContent.includes('Detecting')) {
-                el.textContent = 'Location unavailable';
-            }
-        }, 8000);
+        
+        console.log('[GEO] Starting location tracking...');
 
         const update = (lat, lng) => {
-            console.log(`[GEO] Updating location: ${lat}, ${lng}`);
+            console.log(`[GEO] Success: ${lat}, ${lng}`);
+            this._geoStarted = true;
             this.updateUserLocation(lat, lng);
         };
 
         const tryTelegram = () => {
-            if (window.Telegram?.WebApp?.LocationManager) {
-                const lm = window.Telegram.WebApp.LocationManager;
-                // Some versions require initialization
-                if (lm.init) lm.init(); 
+            const T = window.Telegram?.WebApp;
+            if (T?.LocationManager) {
+                const lm = T.LocationManager;
                 
-                lm.getLocation((data) => {
-                    if (data && data.latitude) {
-                        update(data.latitude, data.longitude);
-                    } else {
-                        tryBrowser();
-                    }
-                });
+                const doGetLocation = () => {
+                    console.log('[GEO] Calling lm.getLocation...');
+                    lm.getLocation((data) => {
+                        if (data && data.latitude) {
+                            update(data.latitude, data.longitude);
+                        } else {
+                            console.warn('[GEO] Telegram getLocation returned no data, falling back...');
+                            tryBrowser();
+                        }
+                    });
+                };
+
+                if (!lm.isInited) {
+                    console.log('[GEO] LocationManager not inited, calling init...');
+                    lm.init(() => {
+                        console.log('[GEO] LocationManager inited successfully');
+                        doGetLocation();
+                    });
+                } else {
+                    doGetLocation();
+                }
                 return true;
             }
             return false;
         };
 
         const tryBrowser = () => {
+            console.log('[GEO] Trying browser geolocation...');
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => update(pos.coords.latitude, pos.coords.longitude),
                     (err) => {
-                        console.error('[GEO] Browser error:', err);
+                        console.error('[GEO] Browser geolocation error:', err);
+                        this._geoStarted = true; // Mark as started to avoid loops
                         const el = document.getElementById('location-text');
                         if (el) el.textContent = 'Location denied';
                     },
-                    { enableHighAccuracy: false, timeout: 6000 }
+                    { enableHighAccuracy: false, timeout: 10000 }
                 );
             }
         };

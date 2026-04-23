@@ -944,10 +944,15 @@ async function updateLocation(req, res, user) {
         // Fetch country name via reverse geocoding
         let country = 'Earth';
         try {
-            // Using Nominatim as it's more accurate for country/region detection
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000); // Max 2 seconds for address
+
             const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {
-                headers: { 'User-Agent': 'LandApp/1.0' }
+                headers: { 'User-Agent': 'LandApp/1.0' },
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
+
             if (geoRes.ok) {
                 const geoData = await geoRes.json();
                 const addr = geoData.address;

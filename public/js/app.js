@@ -429,16 +429,21 @@ const App = {
         this._geoStarted = true;
 
         const update = (lat, lng) => {
+            console.log(`[GEO] Updating location: ${lat}, ${lng}`);
             this.updateUserLocation(lat, lng);
         };
 
         const tryTelegram = () => {
+            console.log('[GEO] Trying Telegram LocationManager...');
             if (window.Telegram?.WebApp?.LocationManager) {
                 const lm = window.Telegram.WebApp.LocationManager;
+                console.log('[GEO] LocationManager found, calling getLocation...');
                 lm.getLocation((data) => {
+                    console.log('[GEO] Telegram result:', data);
                     if (data && data.latitude) {
                         update(data.latitude, data.longitude);
                     } else {
+                        console.log('[GEO] Telegram empty/failed, falling back to browser...');
                         tryBrowser();
                     }
                 });
@@ -448,16 +453,22 @@ const App = {
         };
 
         const tryBrowser = () => {
+            console.log('[GEO] Trying Browser Geolocation...');
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => update(pos.coords.latitude, pos.coords.longitude),
+                    (pos) => {
+                        console.log('[GEO] Browser success:', pos.coords);
+                        update(pos.coords.latitude, pos.coords.longitude);
+                    },
                     (err) => {
-                        console.error('Geo error:', err);
+                        console.error('[GEO] Browser error:', err);
                         const el = document.getElementById('location-text');
                         if (el) el.textContent = 'Location denied';
                     },
                     { enableHighAccuracy: false, timeout: 10000 }
                 );
+            } else {
+                console.log('[GEO] Browser geolocation not supported');
             }
         };
 

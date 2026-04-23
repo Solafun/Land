@@ -95,10 +95,17 @@ export class EarthMap {
 
     setPoints(points, currentUserId) {
         // Clear old points
-        this.points.forEach(p => {
-            if (p.parent) p.parent.remove(p);
-        });
+        if (this.points && this.points.length > 0) {
+            for (let p of this.points) {
+                if (p.parent) p.parent.remove(p);
+                if (p.geometry) p.geometry.dispose();
+                if (p.material) p.material.dispose();
+            }
+        }
         this.points = [];
+
+        if (!points || points.length === 0) return;
+        console.log(`Globe: Rendering ${points.length} points.`);
 
         points.forEach(pos => {
             const isMe = String(pos.id) === String(currentUserId);

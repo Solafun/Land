@@ -43,6 +43,9 @@ const App = {
     },
 
     async init() {
+        if (this._initialized) return;
+        this._initialized = true;
+
         if (!TelegramApp.init()) console.warn('Telegram not available');
         I18n.init();
         this.updateLangButtons();
@@ -388,10 +391,7 @@ const App = {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     this.updateUserLocation(position.coords.latitude, position.coords.longitude);
-                    const locText = document.getElementById('location-text');
-                    const profLocText = document.getElementById('profile-location-text');
-                    if (locText) locText.textContent = `Location updated: ${position.coords.latitude.toFixed(2)}, ${position.coords.longitude.toFixed(2)}`;
-                    if (profLocText) profLocText.textContent = `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                    // Let updateUserLocation handle the text update with country name
                 },
                 (err) => {
                     console.error('Geolocation error:', err);
@@ -404,6 +404,7 @@ const App = {
         };
 
         update();
+        if (this.locationUpdateInterval) clearInterval(this.locationUpdateInterval);
         this.locationUpdateInterval = setInterval(update, 60000);
     },
 

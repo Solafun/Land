@@ -1011,13 +1011,15 @@ async function updateLocation(req, res, user) {
             if (geoRes.ok) {
                 const geoData = await geoRes.json();
                 const addr = geoData.address;
-                const city = addr.city || addr.town || addr.village || addr.suburb || addr.city_district;
+                const city = addr.city || addr.town || addr.village || addr.suburb || addr.city_district || addr.county;
                 const countryName = addr.country;
                 if (city && countryName) {
                     country = `${city}, ${countryName}`;
                 } else {
                     country = countryName || addr.state || addr.region || geoData.display_name.split(',').pop().trim();
                 }
+            } else {
+                 console.warn('Nominatim error status:', geoRes.status);
             }
         } catch (e) {
             console.warn('Country lookup failed:', e.message);

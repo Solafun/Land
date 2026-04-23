@@ -80,11 +80,6 @@ export class EarthMap {
         this.renderer.render(this.scene, this.camera);
     }
 
-    setPoints(points) {
-        // Clear old points
-        this.points.forEach(p => this.scene.remove(p));
-        this.points = [];
-
     setPoints(points, currentUserId) {
         // Clear old points
         this.points.forEach(p => {

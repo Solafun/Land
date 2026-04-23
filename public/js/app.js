@@ -674,7 +674,7 @@ const App = {
                 this.setAppMode(this.userData.app_mode);
                 
                 // Request location after UI is ready
-                this.requestLocation();
+                this.startLocationTracking();
             }
         } catch (error) {
             console.error('Failed to load initial data:', error);

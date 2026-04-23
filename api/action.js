@@ -1012,7 +1012,7 @@ async function updateLocation(req, res, user) {
         console.log(`Points count: ${points.length}, user.id: ${user.id}`);
 
         // RPC returns { success, country, nearby: [...] } — extract the array
-        const nearbyUsersRaw = data?.nearby || data || [];
+        const nearbyUsersRaw = nearbyRes || [];
         const nearby = (Array.isArray(nearbyUsersRaw) ? nearbyUsersRaw : []).map(u => ({
             id: u.id,
             threads_username: u.threads_username,
@@ -1027,7 +1027,7 @@ async function updateLocation(req, res, user) {
             userId: user.id,
             nearby,
             points,
-            country
+            country: nearbyRes?.country || 'Unknown'
         });
     } catch (error) {
         console.error('updateLocation CRITICAL error:', error);

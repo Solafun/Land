@@ -15,7 +15,6 @@ const App = {
     openThreadsUrl(url) {
         if (!url) return;
 
-        // Extract username from URL if it's a profile link (e.g. https://www.threads.com/@username)
         const profileMatch = url.match(/threads\.(?:com|net)\/@([^/?#]+)/);
         const intentMatch = url.match(/threads\.(?:com|net)\/intent/);
 
@@ -23,16 +22,12 @@ const App = {
             const username = profileMatch[1];
             const webUrl = `https://www.threads.com/@${username}`;
 
-            // We use Telegram.WebApp.openLink for everything. 
-            // It safely opens the URL in the in-app browser or native app if associated.
-            // Direct window.location.href = 'threads://...' causes ERR_UNKNOWN_URL_SCHEME on Android WebViews.
             if (window.Telegram?.WebApp?.openLink) {
                 window.Telegram.WebApp.openLink(webUrl);
             } else {
                 window.open(webUrl, '_blank');
             }
         } else {
-            // For non-profile links (e.g. intent/post), open normally
             const finalUrl = url.replace('threads.net', 'threads.com');
             if (window.Telegram?.WebApp?.openLink) {
                 window.Telegram.WebApp.openLink(finalUrl);
@@ -51,9 +46,6 @@ const App = {
         this.updateLangButtons();
         document.documentElement.setAttribute('data-theme', 'dark');
 
-        // Init background engine
-        
-        // Init Earth Map
         if (document.getElementById('globe-container')) {
             this.earthMap = new EarthMap('globe-container');
         }
@@ -63,26 +55,23 @@ const App = {
         this.setupKeyboardDetection();
 
         await this.loadInitialData();
-        
+
         if (this.userData && this.userData.app_mode) {
             this.setAppMode(this.userData.app_mode);
         }
 
-        // Start location tracking if active
         if (this.appMode === 'active') {
             this.startLocationTracking();
         }
 
-        // Handle deep links
         const startParam = TelegramApp.webapp?.initDataUnsafe?.start_param;
         if (startParam === 'nearby') {
             this.switchTab('nearby');
         }
 
-        // Small delay to ensure spheres are visible then hide splash
         setTimeout(() => this.hideSplashScreen(), 500);
 
-        setInterval(() => this.loadNearby(true), 300000); // 5 mins fallback
+        setInterval(() => this.loadNearby(true), 300000);
     },
 
     hideSplashScreen() {
@@ -97,10 +86,9 @@ const App = {
 
     setAppMode(mode) {
         this.appMode = mode;
-        
-        // Block interaction if not verified
+
         const needsOnboarding = this.userData && !this.userData.threads_verified;
-        
+
         document.getElementById('maintenance-stub').classList.toggle('hidden', mode !== 'maintenance');
         document.getElementById('verification-stub').classList.toggle('hidden', mode !== 'verify_only');
         document.getElementById('onboarding-stub').classList.toggle('hidden', !needsOnboarding || mode === 'maintenance');
@@ -108,7 +96,6 @@ const App = {
         const blockedStub = document.getElementById('blocked-stub');
         if (blockedStub) blockedStub.classList.toggle('hidden', mode !== 'blocked');
 
-        // Show content only if active AND verified
         const showContent = mode === 'active' && !needsOnboarding;
         document.getElementById('main-app-content')?.classList.toggle('hidden', !showContent);
 
@@ -166,7 +153,6 @@ const App = {
                     <p style="line-height: 1.4; font-size: 15px;">${I18n.t('verify_only_success')}</p>
                 </div>
             `;
-            // Use event delegation so click works even if link is inside i18n HTML
             stub.addEventListener('click', (e) => {
                 const link = e.target.closest('.threads-link');
                 if (link) {
@@ -224,6 +210,7 @@ const App = {
             if (inputs.includes(e.target.tagName)) update(false);
         });
     },
+
     bindEvents() {
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.addEventListener('click', (e) => { e.preventDefault(); this.switchTab(btn.dataset.tab); });
@@ -231,12 +218,11 @@ const App = {
 
         document.getElementById('spin-btn')?.addEventListener('click', () => this.spin());
 
-        // Star Sparkle
         document.querySelector('.clay-header .clay-badge')?.addEventListener('click', () => {
             const star = document.querySelector('.clay-header .clay-star');
             if (star) {
                 star.classList.remove('sparkle-active');
-                void star.offsetWidth; // Trigger reflow
+                void star.offsetWidth;
                 star.classList.add('sparkle-active');
                 TelegramApp.haptic('impact');
             }
@@ -290,13 +276,11 @@ const App = {
         document.getElementById('verify-publish-btn')?.addEventListener('click', () => this.openThreadsPublish());
         document.getElementById('verify-check-btn')?.addEventListener('click', () => this.checkVerification());
 
-        // Onboarding Bindings
         document.getElementById('onboarding-submit-btn')?.addEventListener('click', () => this.submitOnboarding());
         document.getElementById('onboarding-nick-input')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') { e.target.blur(); this.submitOnboarding(); }
         });
 
-        // Standalone Verification Stub Bindings
         document.getElementById('vo-search-btn')?.addEventListener('click', () => this.searchThreadsForVerify(true));
         document.getElementById('vo-nick-input')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') { e.target.blur(); this.searchThreadsForVerify(true); }
@@ -327,7 +311,6 @@ const App = {
                 I18n.setLanguage(opt.dataset.lang);
                 this.updateSpinButton();
                 if (this.userData) this.updateProfileUI(this.userData);
-                // Re-render search result if visible
                 if (this.lastSearchResult) {
                     const container = document.getElementById('search-result');
                     if (container && !container.classList.contains('hidden')) {
@@ -347,8 +330,6 @@ const App = {
             }
         });
 
-        // iOS Active State Fix
-        // Replaces CSS :active to prevent Safari from tap-highlighting the whole body
         document.body.addEventListener('touchstart', (e) => {
             const btn = e.target.closest('button, .clay-btn, .clay-icon-btn, .nav-item, .clay-list-item, .modal-close');
             if (btn && !btn.disabled) {
@@ -362,7 +343,6 @@ const App = {
                 btn.classList.remove('is-active');
             }
 
-            // Dismiss keyboard on tap outside inputs, but NOT if tapping a button/link/nav
             const isInput = e.target.closest('input, textarea');
             const isInteractive = e.target.closest('button, .clay-btn, .clay-icon-btn, .nav-item, [onclick], a');
 
@@ -375,7 +355,6 @@ const App = {
             document.querySelectorAll('.is-active').forEach(el => el.classList.remove('is-active'));
         }, { passive: true });
     },
-
 
     openSettings() {
         TelegramApp.haptic('impact');
@@ -401,129 +380,155 @@ const App = {
         document.activeElement?.blur();
         document.body.classList.remove('keyboard-open');
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
-        
+
         const tabs = document.querySelectorAll('.tab-content');
         tabs.forEach(tab => {
             const isActive = tab.id === `${tabId}-tab`;
             tab.classList.toggle('active', isActive);
-            // On nearby and other content tabs, enable full pointer events for scrolling
             if (isActive) {
                 tab.style.pointerEvents = tabId === 'map' ? 'none' : 'auto';
             }
         });
-        
+
         this.currentTab = tabId;
 
         if (tabId === 'nearby' && !this.nearbyLoaded) this.loadNearby();
         else if (tabId === 'nearby') this.loadNearby(true);
-        
-        // Disable globe interactions when not on the map tab
+
         const globeBg = document.getElementById('globe-background');
         if (globeBg) {
             globeBg.style.pointerEvents = tabId === 'map' ? 'auto' : 'none';
         }
     },
 
+    // ============================================
+    // FIX: startLocationTracking
+    // Добавлен requestAccess для Telegram LocationManager
+    // и защита от нулевых координат перед отправкой на сервер
+    // ============================================
     startLocationTracking() {
         if (this._geoStarted) return;
         this._geoStarted = true;
 
+        // FIX: Проверяем координаты перед отправкой — не отправляем нули
         const update = (lat, lng, source) => {
-            console.log(`[GEO] SUCCESS via ${source}: ${lat}, ${lng}`);
-            this.updateUserLocation(lat, lng);
+            const parsedLat = parseFloat(lat);
+            const parsedLng = parseFloat(lng);
+
+            if (isNaN(parsedLat) || isNaN(parsedLng)) {
+                console.warn(`[GEO] Skipping NaN coordinates from ${source}`);
+                return;
+            }
+            if (parsedLat === 0 && parsedLng === 0) {
+                console.warn(`[GEO] Skipping zero coordinates from ${source}`);
+                return;
+            }
+
+            console.log(`[GEO] SUCCESS via ${source}: ${parsedLat}, ${parsedLng}`);
+            this.updateUserLocation(parsedLat, parsedLng);
         };
 
         const tryBrowser = (reason) => {
-            console.log(`[GEO] Trying browser fallback (Reason: ${reason})...`);
+            console.log(`[GEO] Trying browser geolocation (Reason: ${reason})...`);
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (p) => update(p.coords.latitude, p.coords.longitude, 'Browser'),
                     (err) => {
-                        console.error('[GEO] Browser failed:', err);
-                        const el = document.getElementById('location-text');
-                        if (el && el.textContent.includes('Detecting')) el.textContent = 'Location denied';
+                        console.error('[GEO] Browser geolocation failed:', err.code, err.message);
+                        const locText = document.getElementById('location-text');
+                        if (locText) locText.textContent = 'Location denied';
                     },
-                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
                 );
             } else {
-                console.log('[GEO] Browser geolocation not supported');
+                console.warn('[GEO] navigator.geolocation not available');
+                const locText = document.getElementById('location-text');
+                if (locText) locText.textContent = 'Location not supported';
             }
         };
 
         const T = window.Telegram?.WebApp;
-        if (T?.LocationManager && T.isVersionAtLeast('7.0')) {
+
+        // Use Telegram as primary if available
+        if (T?.LocationManager) {
             console.log('[GEO] Using Telegram LocationManager...');
             const lm = T.LocationManager;
-            
+
             let telegramResolved = false;
 
             const startSearch = () => {
                 lm.getLocation((data) => {
                     if (telegramResolved) return;
                     telegramResolved = true;
-                    if (data && data.latitude) {
+                    if (data && data.latitude != null && data.longitude != null) {
                         update(data.latitude, data.longitude, 'Telegram');
                     } else {
-                        tryBrowser('Telegram returned no data');
+                        console.warn('[GEO] Telegram LocationManager returned empty data');
+                        tryBrowser('Telegram returned empty');
                     }
                 });
             };
 
             if (!lm.isInited) {
-                lm.init();
+                if (lm.init) lm.init(); 
+                setTimeout(startSearch, 500); 
+            } else {
+                startSearch();
             }
-            
-            startSearch();
 
-            // Fallback if Telegram LocationManager ignores us entirely
+            // Timeout fallback
             setTimeout(() => {
                 if (!telegramResolved && !this.currentLat) {
                     telegramResolved = true;
-                    console.log('[GEO] Telegram LM timed out, falling back wrapper...');
+                    console.warn('[GEO] Telegram LocationManager timed out, falling back to browser...');
                     tryBrowser('Telegram timeout');
                 }
             }, 3000);
-            
+
         } else {
-            tryBrowser('Telegram LM not available');
+            tryBrowser('Telegram WebApp not available');
         }
     },
 
     async updateUserLocation(lat, lng) {
         this.currentLat = lat;
         this.currentLng = lng;
+
+        // FIX: Дополнительная защита — не отправляем нули на сервер
+        if (!lat || !lng || (lat === 0 && lng === 0)) {
+            console.warn('[updateUserLocation] Skipping zero/null coordinates');
+            return;
+        }
+
         try {
             const data = await this.apiRequest('update-location', { lat, lng });
-                console.log('Location update response:', data);
-                if (data.success) {
-                    // Update country display
-                    const statusPanel = document.querySelector('.location-status');
-                    const locText = document.getElementById('location-text');
-                    const profLocText = document.getElementById('profile-location-text');
-                    
-                    if (data.country) {
-                        if (locText) locText.textContent = `Location: ${data.country}`;
-                        if (profLocText) profLocText.textContent = data.country;
-                    } else if (data.city) {
-                         if (locText) locText.textContent = `Location: ${data.city}`;
-                         if (profLocText) profLocText.textContent = data.city;
-                    }
-                    
-                    if (data.nearby) this.renderNearbyList(data.nearby);
-                    
-                    // Use userId from server response (most reliable), fallback to local
-                    const myId = data.userId || this.userData?.id;
-                    if (data.points && this.earthMap) {
-                        console.log(`Setting ${data.points.length} points, myId=${myId}`);
-                        this.earthMap.setPoints(data.points, myId);
-                    }
-                    
-                    // Update online count
-                    const count = document.getElementById('active-users-count');
-                    if (count && data.points) {
-                        count.textContent = data.points.length;
-                    }
+            console.log('Location update response:', data);
+            if (data.success) {
+                const locText = document.getElementById('location-text');
+                const profLocText = document.getElementById('profile-location-text');
 
+                if (data.country) {
+                    if (locText) locText.textContent = `Location: ${data.country}`;
+                    if (profLocText) profLocText.textContent = data.country;
+                } else if (data.city) {
+                    if (locText) locText.textContent = `Location: ${data.city}`;
+                    if (profLocText) profLocText.textContent = data.city;
+                }
+
+                if (data.nearby) this.renderNearbyList(data.nearby);
+
+                const myId = data.userId || this.userData?.id;
+                if (data.points && this.earthMap) {
+                    console.log(`Setting ${data.points.length} points, myId=${myId}`);
+                    this.earthMap.setPoints(data.points, myId);
+                }
+
+                const count = document.getElementById('active-users-count');
+                if (count && data.points) {
+                    count.textContent = data.points.length;
+                }
+
+                const statusPanel = document.querySelector('.location-status');
                 if (statusPanel && !statusPanel.dataset.bound) {
                     statusPanel.style.cursor = 'pointer';
                     statusPanel.addEventListener('click', () => {
@@ -546,16 +551,17 @@ const App = {
         }
 
         try {
-            const data = await this.apiRequest('get-nearby', {
-                lat: this.currentLat,
-                lng: this.currentLng
-            });
-            
+            // FIX: Передаём null если координаты не определены или нулевые,
+            // чтобы сервер не перезаписывал базу нулями
+            const lat = (this.currentLat && this.currentLat !== 0) ? this.currentLat : null;
+            const lng = (this.currentLng && this.currentLng !== 0) ? this.currentLng : null;
+
+            const data = await this.apiRequest('get-nearby', { lat, lng });
+
             if (data.success && data.nearby) {
                 this.renderNearbyList(data.nearby);
-                // Also update global points if returned
                 if (data.points && this.earthMap) {
-                    this.earthMap.setPoints(data.points, this.userData.id);
+                    this.earthMap.setPoints(data.points, this.userData?.id);
                 }
             }
         } catch (error) {
@@ -566,7 +572,6 @@ const App = {
             }
         }
     },
-
 
     renderNearbyList(nearby) {
         const list = document.getElementById('nearby-list');
@@ -591,19 +596,28 @@ const App = {
         nearby.forEach(user => {
             const el = document.createElement('div');
             el.className = 'clay-list-item';
-            
-            // Support distance_km (from RPC), distance_meters, and other variants
+
             let meters = user.distance_meters;
             if (meters === undefined || meters === null) meters = user.distance || user.dist || user.proximity;
-            
-            // RPC returns distance_km — convert to meters
             if ((meters === undefined || meters === null) && user.distance_km !== undefined) {
                 meters = user.distance_km * 1000;
             }
-            
-            // Ultimate fallback: calculate on client side if server failed
-            if ((meters === undefined || meters === null || isNaN(meters)) && this.currentLat && (user.lat || user.latitude)) {
-                meters = this.getDistance(this.currentLat, this.currentLng, user.lat || user.latitude, user.lng || user.longitude);
+
+            // FIX: Клиентский расчёт дистанции только если у обоих пользователей есть ненулевые координаты
+            if (
+                (meters === undefined || meters === null || isNaN(meters)) &&
+                this.currentLat && this.currentLng &&
+                this.currentLat !== 0 && this.currentLng !== 0 &&
+                (user.lat || user.latitude) &&
+                (user.lng || user.longitude) &&
+                (user.lat || user.latitude) !== 0 &&
+                (user.lng || user.longitude) !== 0
+            ) {
+                meters = this.getDistance(
+                    this.currentLat, this.currentLng,
+                    user.lat || user.latitude,
+                    user.lng || user.longitude
+                );
             }
 
             const dist = this.formatDistance(meters);
@@ -628,23 +642,21 @@ const App = {
     },
 
     formatDistance(val) {
-        // Handle potential object wrappers from some DB drivers
         let meters = val;
         if (typeof val === 'object' && val !== null) {
             meters = val.meters ?? val.distance ?? val.dist ?? val.val;
         }
 
-        if (meters === undefined || meters === null || isNaN(meters)) return '...';
-        
-        // If the value is very small (< 0.001), it might be degrees or something went wrong
+        // FIX: null означает "дистанция неизвестна" — показываем прочерк, а не 0 m
+        if (meters === undefined || meters === null || isNaN(meters)) return '—';
+
         if (meters > 0 && meters < 0.1) return '< 1 m';
-        
         if (meters < 1000) return Math.round(meters) + ' m';
         return (meters / 1000).toFixed(1) + ' km';
     },
 
     getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371e3; // meters
+        const R = 6371e3;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -659,8 +671,6 @@ const App = {
         this.showToast(`Viewing @${username}`, 'info');
     },
 
-
-
     async apiRequest(action, data = {}, retries = 3) {
         try {
             const response = await fetch('/api/action', {
@@ -671,7 +681,6 @@ const App = {
 
             const result = await response.json();
 
-            // Handle Unauthorized by waiting and retrying (maybe initData was refreshing)
             if (response.status === 401 && retries > 0) {
                 await new Promise(r => setTimeout(r, 1000));
                 return this.apiRequest(action, data, retries - 1);
@@ -684,16 +693,13 @@ const App = {
             return result;
         } catch (error) {
             const msg = error.message.toLowerCase();
-            // "Failed to fetch" is Chrome/Firefox, "Load failed" is Safari/iOS WebKit
             const isNetworkError = msg.includes('fetch') || msg.includes('load failed') || msg.includes('network');
 
             if (isNetworkError && retries > 0) {
-                // Wait longer between retries for network issues (e.g. user walked into elevator)
                 await new Promise(r => setTimeout(r, 1500));
                 return this.apiRequest(action, data, retries - 1);
             }
 
-            // Provide a localized fallback for raw browser network errors
             if (isNetworkError) {
                 throw new Error(I18n.t('Request failed'));
             }
@@ -708,40 +714,31 @@ const App = {
             console.log('Init data:', data);
 
             if (data.success) {
-                // User UI
                 this.userData = data.user;
                 this.updateProfileUI(data.user);
 
-                // Initial map points and nearby list
                 if (data.nearby && data.nearby.length > 0) {
                     this.renderNearbyList(data.nearby);
                 } else {
-                    // Force a local load of nearby if server didn't provide them yet
                     this.loadNearby(true);
                 }
-                
+
                 if (data.points && this.earthMap) {
                     this.earthMap.setPoints(data.points, this.userData.id);
-                    // Update counter from initial points
                     const count = document.getElementById('active-users-count');
                     if (count) count.textContent = data.points.length;
                 }
 
-                // History
                 if (data.history) {
                     this.spinHistory = data.history;
                     this.updateHistoryUI();
                 }
 
-                // Important: set the app mode (active, maintenance, or onboarding)
                 this.setAppMode(this.userData.app_mode);
-                
-                // Request location after UI is ready
                 this.startLocationTracking();
             }
         } catch (error) {
             console.error('Failed to load initial data:', error);
-            // Fallback: remove loading state even on error to show something
             document.getElementById('app').classList.remove('app-loading');
         }
     },
@@ -885,7 +882,6 @@ const App = {
         });
     },
 
-
     async showSpinResult(participant) {
         TelegramApp.haptic('success');
         const resultEl = document.getElementById('roll-result');
@@ -991,8 +987,6 @@ const App = {
                 return;
             }
 
-            // Сравниваем с кэшем — перерисовываем только если данные изменились
-            // Или если в списке всё еще висит лоадер (нужно отрисовать первый раз)
             const newDataStr = JSON.stringify(leaderboard);
             const oldDataStr = JSON.stringify(this.lastLeaderboard);
             const isLoaderVisible = list.innerHTML.includes('loading-state') || list.innerHTML.includes(I18n.t('leaderboard_loading'));
@@ -1095,7 +1089,6 @@ const App = {
 
         const av = document.createElement('div');
         av.className = 'result-avatar';
-        // Explicitly width & height, letting flex center it
         av.style.width = '60px';
         av.style.height = '60px';
         av.style.flexShrink = '0';
@@ -1141,7 +1134,6 @@ const App = {
         if (!data.already_exists) {
             btn.className = 'clay-btn clay-primary';
             btn.textContent = I18n.t('add_button');
-
             btn.style.marginTop = '10px';
             btn.onclick = async () => {
                 btn.disabled = true;
@@ -1163,7 +1155,6 @@ const App = {
                     btn.disabled = false;
                     btn.textContent = I18n.t('add_button');
                 }
-
             };
         } else {
             btn.className = `clay-btn ${isSubscribed ? 'clay-secondary' : 'clay-primary'}`;
@@ -1283,7 +1274,6 @@ const App = {
             verifiedSection?.classList.remove('hidden');
             if (starBalance) starBalance.textContent = userData.threads_star_balance || 0;
 
-            // Update profile badge and settings
             const pthreads = document.getElementById('profile-threads-info');
             const pnick = document.getElementById('profile-threads-nick');
             if (pthreads && pnick) {
@@ -1307,8 +1297,6 @@ const App = {
     updateLangButtons() {
         // Handled by I18n.apply() called within I18n.setLanguage()
     },
-
-
 
     copyToClipboard(text) {
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1337,8 +1325,6 @@ const App = {
         }
         document.body.removeChild(textArea);
     },
-
-
 
     // ============================================
     // CHALLENGES
@@ -1424,7 +1410,6 @@ const App = {
 
         list.appendChild(fragment);
 
-        // Start timer updates
         if (this.challengeTimerInterval) clearInterval(this.challengeTimerInterval);
         this.challengeTimerInterval = setInterval(() => this.updateChallengeTimers(), 1000);
     },
@@ -1462,7 +1447,6 @@ const App = {
             card.appendChild(burnedCount);
         }
 
-        // Show global countdown timer if deadline exists
         if (config.deadline && (new Date(config.deadline).getTime() > Date.now() || myActive)) {
             const timer = document.createElement('div');
             timer.className = 'challenge-timer';
@@ -1471,7 +1455,6 @@ const App = {
             card.appendChild(timer);
         }
 
-        // If user is actively participating, show staked info and personal timer if no global deadline
         if (myActive) {
             const stakedEl = document.createElement('div');
             stakedEl.className = 'challenge-desc';
@@ -1492,9 +1475,7 @@ const App = {
             status.className = 'challenge-status';
             status.textContent = I18n.t('challenge_joined');
             card.appendChild(status);
-        }
-        // Show resolved history if exists
-        else if (myHistory.length > 0) {
+        } else if (myHistory.length > 0) {
             const last = myHistory[0];
             const statusEl = document.createElement('div');
             statusEl.className = `challenge-status ${last.status}`;
@@ -1504,9 +1485,7 @@ const App = {
             }
             statusEl.textContent = I18n.t(statusKey);
             card.appendChild(statusEl);
-        }
-        // Not participating, show join button or disabled label
-        else if (config.enabled) {
+        } else if (config.enabled) {
             const btn = this.createJoinButton(type);
             card.appendChild(btn);
         } else {
@@ -1536,7 +1515,6 @@ const App = {
             return;
         }
 
-        // Confirmation
         const confirmText = I18n.t('challenge_confirm', { stars, rating });
         if (!confirm(confirmText)) return;
 
@@ -1548,7 +1526,6 @@ const App = {
                 TelegramApp.haptic('success');
                 this.showToast('challenge_joined_toast', 'success');
 
-                // Update local user data
                 if (this.userData) {
                     this.userData.balance = 0;
                     this.userData.threads_star_balance = 0;
@@ -1556,7 +1533,6 @@ const App = {
                     this.updateProfileUI(this.userData);
                 }
 
-                // Reload challenges
                 await this.loadChallenges();
             } else {
                 const errorKey = data.error || 'Error';
@@ -1600,7 +1576,6 @@ const App = {
                 if (!timer.dataset.hasTriggered) {
                     timer.dataset.hasTriggered = 'true';
                     expiredFound = true;
-                    // Immediately update UI to show 'Expired' instead of negative text
                     const textEl = timer.querySelector('.timer-text');
                     if (textEl) textEl.textContent = I18n.t('challenge_status_expired');
                 }
@@ -1613,7 +1588,6 @@ const App = {
         });
 
         if (expiredFound) {
-            // Wait 2 seconds to allow server slightly lagging clocks to catch up
             setTimeout(() => this.loadChallenges(), 2000);
         }
     },

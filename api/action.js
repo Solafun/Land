@@ -1053,25 +1053,21 @@ async function updateLocation(req, res, user) {
         // Fetch all active users with locations for the globe dots
         const { data: pointsRes, error: pointsError } = await supabase
             .from('users')
-            .select('id, location')
-            .not('location', 'is', null)
+            .select('id, lat, lng')
+            .not('lat', 'is', null)
+            .not('lng', 'is', null)
             .limit(200);
 
         if (pointsError) console.error('Points fetch error:', pointsError);
         console.log(`Points raw count: ${(pointsRes || []).length}`);
 
-        const points = (pointsRes || []).map(u => {
-            try {
-                if (u.location && u.location.coordinates) {
-                    return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
-                }
-            } catch (e) {
-                console.warn('Bad location data for user', u.id, e.message);
-            }
-            return null;
-        }).filter(p => p !== null);
+        const points = (pointsRes || []).map(u => ({
+            id: u.id,
+            lat: parseFloat(u.lat),
+            lng: parseFloat(u.lng)
+        }));
 
-        console.log(`Points filtered count: ${points.length}, user.id: ${user.id}`);
+        console.log(`Points count: ${points.length}, user.id: ${user.id}`);
 
         return res.status(200).json({
             success: true,
@@ -1091,23 +1087,20 @@ async function getMapPoints(req, res, user) {
         const { data, error } = await supabase.rpc('get_map_users');
         if (error) throw error;
 
-        // Fetch all active users with locations for the globe dots
+        // Fetch all active users with coordinates for the globe dots
         const { data: pointsRes } = await supabase
             .from('users')
-            .select('id, location')
-            .not('location', 'is', null)
+            .select('id, lat, lng')
+            .not('lat', 'is', null)
+            .not('lng', 'is', null)
             .limit(200);
 
-        const points = (pointsRes || []).map(u => {
-            try {
-                if (u.location && u.location.coordinates) {
-                    return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
-                }
-            } catch (e) { /* skip bad data */ }
-            return null;
-        }).filter(p => p !== null);
+        const points = (pointsRes || []).map(u => ({
+            id: u.id,
+            lat: parseFloat(u.lat),
+            lng: parseFloat(u.lng)
+        }));
 
-        // Return a combined object with success and points
         return res.status(200).json({
             success: true,
             userId: user.id,

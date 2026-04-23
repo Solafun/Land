@@ -427,10 +427,13 @@ const App = {
                          if (profLocText) profLocText.textContent = data.city;
                     }
                     
-                    if (data.user) this.updateProfileUI(data.user);
                     if (data.nearby) this.renderNearbyList(data.nearby);
+                    
+                    // Use userId from server response (most reliable), fallback to local
+                    const myId = data.userId || this.userData?.id;
                     if (data.points && this.earthMap) {
-                        this.earthMap.setPoints(data.points, this.userData?.id);
+                        console.log(`Setting ${data.points.length} points, myId=${myId}`);
+                        this.earthMap.setPoints(data.points, myId);
                     }
                     
                     // Update online count

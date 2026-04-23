@@ -238,7 +238,7 @@ async function handleInitApp(req, res, user) {
 
         return res.status(200).json({
             success: true,
-            user: userData,
+            ...userData,
             leaderboard: []
         });
     } catch (error) {
@@ -250,7 +250,7 @@ async function handleInitApp(req, res, user) {
 async function initUser(req, res, user) {
     try {
         const data = await getInternalUserData(user);
-        return res.status(200).json({ success: true, user: data });
+        return res.status(200).json({ success: true, ...data });
     } catch (error) {
         console.error('User upsert error:', error);
         return res.status(500).json({ success: false, error: 'Database error while saving user' });
@@ -1036,40 +1036,46 @@ async function updateLocation(req, res, user) {
             throw error;
         }
 
-        // BACKUP: Explicitly update flat lat/lng columns just in case the RPC only touches the geometry column
-        await supabase
-            .from('users')
-            .update({ 
-                lat: parseFloat(lat), 
-                lng: parseFloat(lng),
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
-
-        const userData = await getInternalUserData(user);
+        // BACKUP: Try to also update flat lat/lng columns (they may not exist)
+        try {
+            await supabase
+                .from('users')
+                .update({ 
+                    lat: parseFloat(lat), 
+                    lng: parseFloat(lng),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id);
+        } catch (e) {
+            // Columns may not exist — that's fine, RPC handles geometry
+        }
 
         // Fetch all active users with locations for the globe dots
-        // We now fetch both formats to be extremely safe
-        const { data: pointsRes } = await supabase
+        const { data: pointsRes, error: pointsError } = await supabase
             .from('users')
-            .select('id, lat, lng, location')
+            .select('id, location')
+            .not('location', 'is', null)
             .limit(200);
 
+        if (pointsError) console.error('Points fetch error:', pointsError);
+        console.log(`Points raw count: ${(pointsRes || []).length}`);
+
         const points = (pointsRes || []).map(u => {
-            // Priority 1: Direct lat/lng columns (most reliable now)
-            if (u.lat !== undefined && u.lat !== null && u.lng !== undefined && u.lng !== null) {
-                return { id: u.id, lat: parseFloat(u.lat), lng: parseFloat(u.lng) };
-            }
-            // Priority 2: Location object
-            if (u.location && u.location.coordinates) {
-                return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
+            try {
+                if (u.location && u.location.coordinates) {
+                    return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
+                }
+            } catch (e) {
+                console.warn('Bad location data for user', u.id, e.message);
             }
             return null;
         }).filter(p => p !== null);
 
+        console.log(`Points filtered count: ${points.length}, user.id: ${user.id}`);
+
         return res.status(200).json({
             success: true,
-            user: userData, // Merged init info
+            userId: user.id,
             nearby: data,
             points,
             country
@@ -1088,23 +1094,24 @@ async function getMapPoints(req, res, user) {
         // Fetch all active users with locations for the globe dots
         const { data: pointsRes } = await supabase
             .from('users')
-            .select('id, lat, lng, location')
+            .select('id, location')
+            .not('location', 'is', null)
             .limit(200);
 
         const points = (pointsRes || []).map(u => {
-            if (u.lat !== undefined && u.lat !== null && u.lng !== undefined && u.lng !== null) {
-                return { id: u.id, lat: parseFloat(u.lat), lng: parseFloat(u.lng) };
-            }
-            if (u.location && u.location.coordinates) {
-                return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
-            }
+            try {
+                if (u.location && u.location.coordinates) {
+                    return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
+                }
+            } catch (e) { /* skip bad data */ }
             return null;
         }).filter(p => p !== null);
 
         // Return a combined object with success and points
         return res.status(200).json({
             success: true,
-            nearby: data, // RPC returns array of nearby users
+            userId: user.id,
+            nearby: data,
             points
         });
     } catch (error) {

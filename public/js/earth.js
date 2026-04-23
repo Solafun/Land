@@ -50,6 +50,9 @@ export class EarthMap {
         this.globe = new THREE.Mesh(geometry, material);
         this.scene.add(this.globe);
 
+        // Standard orientation: rotate globe so Prime Meridian is visible from start
+        this.globe.rotation.y = -Math.PI / 2;
+
         // Add a wireframe for a "tech" feel
         const wireframe = new THREE.Mesh(
             geometry,
@@ -105,9 +108,9 @@ export class EarthMap {
     }
 
     latLngToVector3(lat, lng, radius) {
-        // Standard mapping for night texture: lat 0, lng 0 is mapped to align with prime meridian
+        // Standard mapping for night texture with 180 degree offset
         const phi = (90 - lat) * (Math.PI / 180);
-        const theta = (lng + 0) * (Math.PI / 180);
+        const theta = (lng + 180) * (Math.PI / 180);
 
         const x = -radius * Math.sin(phi) * Math.cos(theta);
         const z = radius * Math.sin(phi) * Math.sin(theta);

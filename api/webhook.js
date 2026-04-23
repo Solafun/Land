@@ -11,15 +11,10 @@ const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id
 async function handler(req, res) {
     if (req.method !== 'POST') return res.status(200).send('OK');
 
-    const secretHeader = req.headers['x-telegram-bot-api-secret-token'];
-    if (WEBHOOK_SECRET && secretHeader && secretHeader !== WEBHOOK_SECRET) {
-        console.warn('Invalid webhook secret');
-        return res.status(403).send('Forbidden');
-    }
+    const update = req.body;
+    if (!update) return res.status(200).json({ ok: false, error: 'No body' });
 
     try {
-        const update = req.body;
-
         if (update.pre_checkout_query) {
             await answerPreCheckout(update.pre_checkout_query.id, true);
             return res.status(200).json({ ok: true });
@@ -194,27 +189,27 @@ async function handleSuccessfulPayment(message) {
 }
 
 async function sendStartMessage(chatId, lang = 'en') {
-    const APP_URL = process.env.APP_URL || 'https://threadsstars.vercel.app/';
+    const APP_URL = process.env.APP_URL || 'https://land-ten-weld.vercel.app/';
     const isRussian = ['ru', 'uk', 'be', 'kk', 'uz'].includes(lang.toLowerCase());
 
-    const textEn = "⭐️ <b>Threads Stars!</b>\n\n" +
-        "Roll and promote your Threads creators! 💅\n\n" +
-        "🎯 You have 15 free votes to support them!\n" +
-        "🏆 Track your progress on the leaderboard!\n\n" +
-        "👇 <b>Tap to play:</b>";
+    const textEn = "🌍 <b>Land: Live Map</b>\n\n" +
+        "Find friends and see who's nearby on a stunning 3D globe! 📍\n\n" +
+        "👣 Real-time location updates.\n" +
+        "✨ Beautiful icons and smooth navigation.\n\n" +
+        "👇 <b>Tap to open:</b>";
 
-    const textRu = "⭐️ <b>Threads Stars</b>\n\n" +
-        "Вращай и продвигай любимых авторов в Threads! 💅\n\n" +
-        "🎯 15 бесплатных вращений\n" +
-        "🏆 Следи за ростом в таблице лидеров!\n\n" +
-        "👇 <b>Жми, чтобы играть:</b>";
+    const textRu = "🌍 <b>Land: Живая карта</b>\n\n" +
+        "Находи друзей и смотри, кто прямо сейчас находится рядом с тобой на 3D глобусе! 📍\n\n" +
+        "👣 Твоя локация обновляется в реальном времени.\n" +
+        "✨ Стильные маркеры и плавная навигация.\n\n" +
+        "👇 <b>Жми, чтобы открыть:</b>";
 
     await sendMessage(chatId,
         isRussian ? textRu : textEn,
         {
             reply_markup: {
                 inline_keyboard: [[
-                    { text: isRussian ? "🎮 Играть" : "🎮 Play Now", web_app: { url: APP_URL } }
+                    { text: isRussian ? "🌍 Открыть карту" : "🌍 Open Map", web_app: { url: APP_URL } }
                 ]]
             }
         }

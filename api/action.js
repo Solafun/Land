@@ -1039,7 +1039,7 @@ async function updateLocation(req, res, user) {
             .from('users')
             .select('id, location')
             .not('location', 'is', null)
-            .gte('last_active', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+            .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
         const points = (pointsRes || []).map(u => ({
             id: u.id,
@@ -1069,7 +1069,7 @@ async function getMapPoints(req, res, user) {
             .from('users')
             .select('id, location')
             .not('location', 'is', null)
-            .gte('last_active', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+            .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
         const points = (pointsRes || []).map(u => ({
             id: u.id,

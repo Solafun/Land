@@ -66,7 +66,12 @@ function secureRandomInt(min, max) {
     return crypto.randomInt(min, max);
 }
 
-
+function generateVerificationCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'STARS-';
+    for (let i = 0; i < 6; i++) code += chars[crypto.randomInt(0, chars.length)];
+    return code;
+}
 
 function getLocaleFromLanguage(langCode) {
     const map = {
@@ -206,7 +211,6 @@ async function getInternalUserData(user) {
             username: userData.username,
             threads_username: userData.threads_username || null,
             threads_verified: userData.threads_verified || false,
-            threads_avatar_url: userData.threads_avatar_url,
             verification_code: userData.verification_code || null,
             verification_status: userData.verification_status || 'none',
             country: userData.country || null,
@@ -232,27 +236,9 @@ async function handleInitApp(req, res, user) {
     try {
         const userData = await getInternalUserData(user);
 
-        // Initial nearby and map points
-        const { data: pointsRes } = await supabase
-            .from('users')
-            .select('id, lat, lng, threads_username, threads_avatar_url')
-            .not('lat', 'is', null)
-            .not('lng', 'is', null)
-            .limit(200);
-
-        const points = (pointsRes || []).map(u => ({
-            id: u.id,
-            lat: parseFloat(u.lat),
-            lng: parseFloat(u.lng),
-            nickname: u.threads_username,
-            avatar_url: u.threads_avatar_url
-        }));
-
         return res.status(200).json({
             success: true,
             ...userData,
-            nearby: [],
-            points: points,
             leaderboard: []
         });
     } catch (error) {
@@ -260,7 +246,6 @@ async function handleInitApp(req, res, user) {
         return res.status(500).json({ success: false, error: 'Failed to initialize app data' });
     }
 }
-
 
 async function initUser(req, res, user) {
     try {
@@ -423,51 +408,18 @@ async function searchThreads(req, res, user) {
     const { nickname } = req.body;
     const clean = nickname.replace(/^@/, '').trim().toLowerCase();
 
-    // Search in users table by threads_username
-    const { data: existing } = await supabase
-        .from('users')
-        .select('id, threads_username, threads_avatar_url')
-        .eq('threads_username', clean)
-        .single();
-
+    const { data: existing } = await supabase.from('participants').select('id, nickname, avatar_url, score').eq('nickname', clean).single();
     const threadResult = await fetchFromThreads(clean);
 
     if (existing) {
-        return res.status(200).json({ 
-            success: true, 
-            found: true, 
-            already_exists: true, 
-            nickname: existing.threads_username, 
-            avatar_url: existing.threads_avatar_url || threadResult.avatar 
-        });
+        if (threadResult.exists && threadResult.avatar && threadResult.avatar !== existing.avatar_url) {
+            await supabase.from('participants').update({ avatar_url: threadResult.avatar }).eq('id', existing.id);
+        }
+        return res.status(200).json({ success: true, found: true, already_exists: true, nickname: clean, avatar_url: threadResult.avatar || existing.avatar_url, score: existing.score });
     }
 
     if (threadResult.exists) return res.status(200).json({ success: true, found: true, already_exists: false, nickname: clean, avatar_url: threadResult.avatar });
     return res.status(200).json({ success: true, found: false, nickname: clean });
-}
-
-async function getUserProfile(req, res, user) {
-    const { username } = req.body;
-    const clean = username.replace(/^@/, '').trim().toLowerCase();
-
-    // Search in users table by threads_username or telegram username as fallback
-    const { data: userData } = await supabase
-        .from('users')
-        .select('id, username, threads_username, threads_avatar_url, threads_verified')
-        .or(`threads_username.eq.${clean},username.eq.${clean}`)
-        .single();
-
-    if (!userData) return res.status(200).json({ success: false, error: 'User not found' });
-
-    return res.status(200).json({
-        success: true,
-        user: {
-            id: userData.id,
-            nickname: userData.threads_username || userData.username,
-            avatar_url: userData.threads_avatar_url,
-            verified: userData.threads_verified
-        }
-    });
 }
 
 async function addParticipant(req, res, user) {
@@ -511,31 +463,138 @@ async function checkSubscription(req, res, user) {
     return res.status(200).json({ success: true, subscribed: data });
 }
 
-
-
-async function saveNickname(req, res, user) {
+async function startVerification(req, res, user) {
     const { nickname } = req.body;
     if (!nickname) return res.status(400).json({ success: false, error: 'Nickname required' });
     const clean = nickname.replace(/^@/, '').trim().toLowerCase();
 
-    // Fetch avatar from Threads
-    const threadResult = await fetchFromThreads(clean);
-    const avatarUrl = threadResult.exists ? threadResult.avatar : null;
+    // Check not already claimed by another user
+    const { data: existingOwner } = await supabase
+        .from('users')
+        .select('id')
+        .eq('threads_username', clean)
+        .neq('id', user.id)
+        .single();
 
-    // Just save as verified as requested
-    const { error } = await supabase.from('users').update({
+    if (existingOwner) {
+        return res.status(200).json({ success: false, error: 'already_claimed' });
+    }
+
+    // Check Threads profile exists
+    const threadResult = await fetchFromThreads(clean);
+    if (!threadResult.exists) {
+        return res.status(200).json({ success: false, error: 'no_threads_profile' });
+    }
+
+    // Generate or reuse existing code
+    const { data: existingUser } = await supabase
+        .from('users')
+        .select('verification_code, threads_username')
+        .eq('id', user.id)
+        .single();
+
+    // Reuse code if same nickname, else generate new
+    let code = existingUser?.verification_code;
+    if (!code || existingUser?.threads_username !== clean) {
+        code = generateVerificationCode();
+    }
+
+    await supabase.from('users').update({
         threads_username: clean,
-        threads_avatar_url: avatarUrl,
+        verification_code: code,
+        verification_status: 'pending'
+    }).eq('id', user.id);
+
+    return res.status(200).json({ success: true, code, threads_username: clean });
+}
+
+async function checkVerification(req, res, user) {
+    // Load user's pending verification data
+    const { data: userData } = await supabase
+        .from('users')
+        .select('threads_username, verification_code, verification_status, threads_verified')
+        .eq('id', user.id)
+        .single();
+
+    if (!userData?.threads_username || !userData?.verification_code) {
+        return res.status(200).json({ success: false, error: 'no_pending_verification' });
+    }
+
+    if (userData.threads_verified) {
+        return res.status(200).json({ success: true, verified: true, already: true });
+    }
+
+    // Fetch Threads profile page and look for the verification code
+    const threadResult = await fetchFromThreads(userData.threads_username);
+    let codeFound = false;
+
+    if (threadResult.exists) {
+        // Also try to fetch the raw HTML to search for the code in posts/bio
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const response = await fetch(`https://www.threads.com/@${userData.threads_username}`, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                },
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            const html = await response.text();
+            codeFound = html.includes(userData.verification_code);
+        } catch (e) {
+            codeFound = false;
+        }
+    }
+
+    if (!codeFound) {
+        return res.status(200).json({ success: true, verified: false });
+    }
+
+    // Mark as verified
+    await supabase.from('users').update({
         threads_verified: true,
         verification_status: 'verified'
     }).eq('id', user.id);
 
+    // Link participant if one exists with this nickname or create new one
+    const { data: existingParticipant } = await supabase.from('participants')
+        .select('id')
+        .eq('nickname', userData.threads_username)
+        .single();
+
+    if (existingParticipant) {
+        await supabase.from('participants')
+            .update({ owner_telegram_id: user.id })
+            .eq('id', existingParticipant.id);
+    } else if (threadResult.exists && threadResult.avatar) {
+        await supabase.from('participants')
+            .insert({
+                nickname: userData.threads_username,
+                avatar_url: threadResult.avatar,
+                owner_telegram_id: user.id,
+                added_by: user.id
+            });
+    }
+
+    return res.status(200).json({ success: true, verified: true });
+}
+
+async function disconnectThreads(req, res, user) {
+    const { error } = await supabase.from('users').update({
+        threads_username: null,
+        threads_verified: false,
+        verification_code: null,
+        verification_status: 'none'
+    }).eq('id', user.id);
+
     if (error) {
-        console.error('saveNickname error:', error);
+        console.error('Disconnect Threads error:', error);
         return res.status(500).json({ success: false, error: 'Database error' });
     }
 
-    return res.status(200).json({ success: true, avatar_url: avatarUrl });
+    return res.status(200).json({ success: true });
 }
 
 // ============================================
@@ -944,15 +1003,10 @@ async function updateLocation(req, res, user) {
         // Fetch country name via reverse geocoding
         let country = 'Earth';
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000); // Max 2 seconds for address
-
+            // Using Nominatim as it's more accurate for country/region detection
             const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {
-                headers: { 'User-Agent': 'LandApp/1.0' },
-                signal: controller.signal
+                headers: { 'User-Agent': 'LandApp/1.0' }
             });
-            clearTimeout(timeoutId);
-
             if (geoRes.ok) {
                 const geoData = await geoRes.json();
                 const addr = geoData.address;
@@ -996,9 +1050,10 @@ async function updateLocation(req, res, user) {
             // Columns may not exist — that's fine, RPC handles geometry
         }
 
+        // Fetch all active users with locations for the globe dots
         const { data: pointsRes, error: pointsError } = await supabase
             .from('users')
-            .select('id, lat, lng, threads_username, threads_avatar_url')
+            .select('id, lat, lng')
             .not('lat', 'is', null)
             .not('lng', 'is', null)
             .limit(200);
@@ -1009,31 +1064,21 @@ async function updateLocation(req, res, user) {
         const points = (pointsRes || []).map(u => ({
             id: u.id,
             lat: parseFloat(u.lat),
-            lng: parseFloat(u.lng),
-            nickname: u.threads_username,
-            avatar_url: u.threads_avatar_url
+            lng: parseFloat(u.lng)
         }));
 
         console.log(`Points count: ${points.length}, user.id: ${user.id}`);
 
-        // RPC returns the array directly
-        const nearbyUsersRaw = data || [];
-        const nearby = (Array.isArray(nearbyUsersRaw) ? nearbyUsersRaw : []).map(u => ({
-            id: u.id,
-            threads_username: u.threads_username,
-            threads_avatar_url: u.threads_avatar_url,
-            distance_meters: u.distance_meters,
-            lat: u.lat,
-            lng: u.lng,
-            country: u.country
-        }));
+        // RPC returns { success, country, nearby: [...] } — extract the array
+        const nearbyUsers = data?.nearby || data || [];
+        console.log(`Nearby users count: ${Array.isArray(nearbyUsers) ? nearbyUsers.length : 'not array'}`);
 
         return res.status(200).json({
             success: true,
             userId: user.id,
-            nearby,
+            nearby: Array.isArray(nearbyUsers) ? nearbyUsers : [],
             points,
-            country: country || 'Unknown'
+            country
         });
     } catch (error) {
         console.error('updateLocation CRITICAL error:', error);
@@ -1049,7 +1094,7 @@ async function getMapPoints(req, res, user) {
         // Fetch all active users with coordinates for the globe dots
         const { data: pointsRes } = await supabase
             .from('users')
-            .select('id, lat, lng, threads_username, threads_avatar_url')
+            .select('id, lat, lng')
             .not('lat', 'is', null)
             .not('lng', 'is', null)
             .limit(200);
@@ -1057,9 +1102,7 @@ async function getMapPoints(req, res, user) {
         const points = (pointsRes || []).map(u => ({
             id: u.id,
             lat: parseFloat(u.lat),
-            lng: parseFloat(u.lng),
-            nickname: u.threads_username,
-            avatar_url: u.threads_avatar_url
+            lng: parseFloat(u.lng)
         }));
 
         return res.status(200).json({
@@ -1074,87 +1117,9 @@ async function getMapPoints(req, res, user) {
     }
 }
 
-async function getNearbyHandler(req, res, user) {
-    const { lat, lng } = req.body;
-    try {
-        let nearby = [];
-        
-        // Only trigger update/nearby RPC if we have actual coordinates
-        if (lat && lng && parseFloat(lat) !== 0) {
-            const { data, error } = await supabase.rpc('update_location_and_get_nearby', {
-                p_user_id: user.id,
-                p_lat: parseFloat(lat),
-                p_lng: parseFloat(lng),
-                p_country: 'Earth'
-            });
-            if (!error) nearby = (data || []);
-        } else {
-            // Fetch people near the user's LAST KNOWN location without updating the DB
-            const { data: userData } = await supabase.from('users').select('lat, lng').eq('id', user.id).single();
-            const uLat = userData?.lat;
-            const uLng = userData?.lng;
-            
-            if (uLat && uLng && uLat !== 0) {
-                // Manual distance calculation in Postgres using pure SQL since PostGIS is removed
-                // Avoiding the RPC because the RPC updates the user's location
-                const { data: recent, error: recentErr } = await supabase
-                    .from('users')
-                    .select('id, threads_username, threads_avatar_url, lat, lng, country')
-                    .neq('id', user.id)
-                    .not('lat', 'is', null)
-                    .limit(50);
-                
-                if (!recentErr) {
-                    nearby = (recent || []).map(u => {
-                        // Earth radius in meters = 6371000
-                        // Simplified equirectangular approximation for speed
-                        const lat1 = uLat * Math.PI / 180;
-                        const lat2 = u.lat * Math.PI / 180;
-                        const dLat = (u.lat - uLat) * Math.PI / 180;
-                        const dLon = (u.lng - uLng) * Math.PI / 180;
-                        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                                Math.cos(lat1) * Math.cos(lat2) *
-                                Math.sin(dLon/2) * Math.sin(dLon/2);
-                        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                        const distMeters = 6371000 * c;
-                        
-                        return { ...u, distance_meters: distMeters };
-                    }).sort((a, b) => a.distance_meters - b.distance_meters).slice(0, 50);
-                }
-            }
-            
-            if (!nearby.length) {
-                const { data: recent } = await supabase
-                    .from('users')
-                    .select('id, threads_username, threads_avatar_url, lat, lng, country')
-                    .not('lat', 'is', null)
-                    .limit(20);
-                nearby = (recent || []).map(u => ({ ...u, distance_meters: null })); // null means unknown
-            }
-        }
-
-        const nearbyMapped = nearby.map(u => ({
-            id: u.id, 
-            threads_username: u.threads_username, 
-            threads_avatar_url: u.threads_avatar_url,
-            distance_meters: u.distance_meters, 
-            lat: u.lat, 
-            lng: u.lng,
-            country: u.country
-        }));
-
-        const { data: pointsRes } = await supabase.from('users').select('id, lat, lng, threads_username, threads_avatar_url').not('lat', 'is', null).limit(200);
-        const points = (pointsRes || []).map(u => ({
-            id: u.id, lat: parseFloat(u.lat), lng: parseFloat(u.lng), nickname: u.threads_username, avatar_url: u.threads_avatar_url
-        }));
-
-        return res.status(200).json({ success: true, nearby: nearbyMapped, points });
-    } catch (error) {
-        return res.status(500).json({ success: false, error: error.message });
-    }
-}
-
-
+// ============================================
+// MAIN HANDLER
+// ============================================
 module.exports = async function handler(req, res) {
     // CORS Headers
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -1204,13 +1169,13 @@ module.exports = async function handler(req, res) {
         switch (action) {
             case 'init-app': return await handleInitApp(req, res, user);
             case 'init-user': return await initUser(req, res, user);
-            case 'get-nearby': return await getNearbyHandler(req, res, user);
             case 'search-threads': return await searchThreads(req, res, user);
             case 'add-participant': return await addParticipant(req, res, user);
             case 'toggle-subscription': return await toggleSubscription(req, res, user);
             case 'check-subscription': return await checkSubscription(req, res, user);
-
-            case 'save-nickname': return await saveNickname(req, res, user);
+            case 'start-verification': return await startVerification(req, res, user);
+            case 'check-verification': return await checkVerification(req, res, user);
+            case 'disconnect-threads': return await disconnectThreads(req, res, user);
             case 'update-location': return await updateLocation(req, res, user);
             case 'get-map-users': return await getMapPoints(req, res, user);
             default:

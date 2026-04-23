@@ -49,9 +49,10 @@ export class EarthMap {
 
         this.globe = new THREE.Mesh(geometry, material);
         this.scene.add(this.globe);
+        
+        // Standard rotation to put Europe/Africa in view
+        this.globe.rotation.y = -Math.PI / 2;
 
-        this.globe = new THREE.Mesh(geometry, material);
-        this.scene.add(this.globe);
 
 
         // Controls
@@ -99,11 +100,11 @@ export class EarthMap {
     }
 
     latLngToVector3(lat, lng, radius) {
-        // Precise mapping for Moscow to align with its night lights on the texture
+        // Corrected mapping for unpkg earth-night texture
         const phi = (90 - lat) * (Math.PI / 180);
-        const theta = (lng + 90) * (Math.PI / 180);
+        const theta = (lng + 180) * (Math.PI / 180);
 
-        const x = radius * Math.sin(phi) * Math.cos(theta);
+        const x = -radius * Math.sin(phi) * Math.cos(theta);
         const z = radius * Math.sin(phi) * Math.sin(theta);
         const y = radius * Math.cos(phi);
 

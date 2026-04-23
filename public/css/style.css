@@ -91,26 +91,6 @@ body::before {
     display: none !important;
 }
 
-/* ========= ORIENTATION LOCK ========= */
-@media screen and (orientation: landscape) and (max-width: 950px) {
-    body::after {
-        content: "Please rotate your device to portrait mode 📱";
-        position: fixed;
-        inset: 0;
-        background: var(--bg-color);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 18px;
-        text-align: center;
-        padding: 20px;
-    }
-    #app { display: none !important; }
-}
-
 #app {
     position: relative;
     height: 100%;
@@ -137,12 +117,12 @@ body::before {
     pointer-events: none;
 }
 
-/* ========= LAYOUT (View Only - No Nav) ========= */
+/* ========= LAYOUT ========= */
 .tab-content {
     display: none !important;
     flex: 1;
     flex-direction: column;
-    padding: calc(var(--safe-top) + 20px) 20px 40px;
+    padding: calc(var(--safe-top) + 20px) 20px calc(var(--safe-bottom) + var(--nav-height) + 40px);
     overflow-y: auto;
     overflow-x: hidden;
     position: relative;
@@ -162,7 +142,7 @@ body::before {
     justify-content: center;
     align-items: center;
     padding-top: var(--safe-top);
-    padding-bottom: 40px;
+    padding-bottom: calc(var(--safe-bottom) + var(--nav-height));
 }
 
 @keyframes glassReveal {
@@ -1599,39 +1579,22 @@ body.keyboard-open .clay-nav {
     font-weight: 700;
     border: 1px solid rgba(2, 132, 199, 0.3);
 }
-/* ========= VIEW ONLY MODE OVERRIDES ========= */
-.clay-nav, 
-.gift-fab, 
-.clay-input-wrapper, 
-#add-tab, 
-#settings-tab, 
-.modal, 
-.mode-stub:not(#maintenance-stub), 
-.clay-btn:not(.location-status),
-.nav-item {
-    display: none !important;
-}
 
-#nav-bar-clay {
-    display: none !important;
-}
-
-/* Увеличиваем отступы, так как навигации больше нет */
-.tab-content {
-    padding-bottom: var(--safe-bottom) !important;
-}
-
-/* ========= CORRECT VIEW ONLY (Visual) ========= */
-.clay-nav, 
-.gift-fab, 
-#profile-tab, 
-#spin-btn, 
-#verify-modal,
-#add-tab {
-    display: none !important;
-}
-
-/* Оставляем только нужную навигацию или фиксируем карту */
-#map-tab {
-    display: block !important;
+/* ========= ORIENTATION LOCK (Force Portrait) ========= */
+@media screen and (orientation: landscape) and (max-device-width: 950px) {
+    #app,
+    #globe-background,
+    .splash-screen,
+    .modal,
+    .clay-modal-page,
+    .mode-stub,
+    .toast-container {
+        width: 100vh !important;
+        height: 100vw !important;
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) rotate(-90deg) !important;
+        transform-origin: center !important;
+    }
 }

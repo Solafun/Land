@@ -16,7 +16,15 @@ export class EarthMap {
     }
 
     init() {
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        if (width > height && width < 950) {
+            const temp = width;
+            width = height;
+            height = temp;
+        }
+
+        this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.container.appendChild(this.renderer.domElement);
 
@@ -63,8 +71,8 @@ export class EarthMap {
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
         this.controls.rotateSpeed = 0.5;
-        this.controls.enableZoom = false; // Disable zoom
-        this.controls.enablePan = false;  // Disable panning (moving it around)
+        this.controls.enableZoom = false; // Disable zoom to keep it consistent
+        this.controls.enablePan = false; // Disable panning as requested
         this.controls.autoRotate = true;
         this.controls.autoRotateSpeed = 0.5;
 
@@ -73,9 +81,19 @@ export class EarthMap {
     }
 
     onWindowResize() {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+
+        // If in landscape on mobile, we rotate the UI, so we need to swap dimensions for Three.js
+        if (width > height && width < 950) {
+            const temp = width;
+            width = height;
+            height = temp;
+        }
+
+        this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setSize(width, height);
     }
 
     animate() {

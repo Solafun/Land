@@ -238,8 +238,8 @@ async function handleInitApp(req, res, user) {
 
         return res.status(200).json({
             success: true,
-            ...userData,
-            leaderboard: [] // Return empty list for now
+            user: userData,
+            leaderboard: []
         });
     } catch (error) {
         console.error('Init App Error:', error);
@@ -250,7 +250,7 @@ async function handleInitApp(req, res, user) {
 async function initUser(req, res, user) {
     try {
         const data = await getInternalUserData(user);
-        return res.status(200).json({ success: true, ...data });
+        return res.status(200).json({ success: true, user: data });
     } catch (error) {
         console.error('User upsert error:', error);
         return res.status(500).json({ success: false, error: 'Database error while saving user' });
@@ -1041,15 +1041,19 @@ async function updateLocation(req, res, user) {
         // Fetch all active users with locations for the globe dots
         const { data: pointsRes } = await supabase
             .from('users')
-            .select('id, location')
+            .select('id, location, lat, lng')
             .not('location', 'is', null)
             .limit(200);
 
-        const points = (pointsRes || []).map(u => ({
-            id: u.id,
-            lat: u.location.coordinates[1],
-            lng: u.location.coordinates[0]
-        }));
+        const points = (pointsRes || []).map(u => {
+            if (u.location && u.location.coordinates) {
+                return { id: u.id, lat: u.location.coordinates[1], lng: u.location.coordinates[0] };
+            }
+            if (u.lat !== undefined && u.lng !== undefined) {
+                return { id: u.id, lat: u.lat, lng: u.lng };
+            }
+            return null;
+        }).filter(p => p !== null);
 
         return res.status(200).json({
             success: true,
@@ -1072,7 +1076,7 @@ async function getMapPoints(req, res, user) {
         // Fetch all active users with locations for the globe dots
         const { data: pointsRes } = await supabase
             .from('users')
-            .select('id, location')
+            .select('id, location, lat, lng')
             .not('location', 'is', null)
             .limit(100);
             // Relaxed filter to ensure points appear

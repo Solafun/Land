@@ -414,11 +414,6 @@ const App = {
             const data = await this.apiRequest('update-location', { lat, lng });
                 console.log('Location update response:', data);
                 if (data.success) {
-                    if (data.nearby) this.renderNearbyList(data.nearby);
-                    if (data.points && this.earthMap) {
-                        this.earthMap.setPoints(data.points, this.userData?.id);
-                    }
-                    
                     // Update country display
                     const statusPanel = document.querySelector('.location-status');
                     const locText = document.getElementById('location-text');
@@ -430,6 +425,12 @@ const App = {
                     } else if (data.city) {
                          if (locText) locText.textContent = `Location: ${data.city}`;
                          if (profLocText) profLocText.textContent = data.city;
+                    }
+                    
+                    if (data.user) this.updateProfileUI(data.user);
+                    if (data.nearby) this.renderNearbyList(data.nearby);
+                    if (data.points && this.earthMap) {
+                        this.earthMap.setPoints(data.points, this.userData?.id);
                     }
                     
                     // Update online count
@@ -617,6 +618,10 @@ const App = {
     },
 
     updateProfileUI(user) {
+        if (!user) {
+            console.warn('updateProfileUI: user data is missing');
+            return;
+        }
         const un = document.getElementById('user-name');
         if (un) un.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
         const av = document.getElementById('user-avatar');

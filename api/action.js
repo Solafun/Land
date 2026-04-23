@@ -1027,7 +1027,7 @@ async function updateLocation(req, res, user) {
             userId: user.id,
             nearby,
             points,
-            country: nearbyRes?.country || 'Unknown'
+            country: country || 'Unknown'
         });
     } catch (error) {
         console.error('updateLocation CRITICAL error:', error);

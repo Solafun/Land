@@ -436,9 +436,10 @@ const App = {
                     (err) => {
                         console.error('[GEO] Browser geolocation failed:', err.code, err.message);
                         const locText = document.getElementById('location-text');
-                        if (locText) locText.textContent = 'Location denied';
+                        if (locText) locText.textContent = `Error: ${err.message}`;
+                        this.showToast(`Geo Error: ${err.message}`, 'error');
                     },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
                 );
             } else {
                 console.warn('[GEO] navigator.geolocation not available');
@@ -470,8 +471,11 @@ const App = {
             };
 
             if (!lm.isInited) {
-                if (lm.init) lm.init(); 
-                setTimeout(startSearch, 500); 
+                if (lm.init) {
+                    lm.init(() => startSearch());
+                } else {
+                    startSearch();
+                }
             } else {
                 startSearch();
             }

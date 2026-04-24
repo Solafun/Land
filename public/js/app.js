@@ -1095,40 +1095,8 @@ const App = {
 
         container.appendChild(av);
         container.appendChild(info);
-
-        if (!data.already_exists) {
-            const btn = document.createElement('button');
-            btn.className = 'clay-btn clay-primary';
-            btn.textContent = I18n.t('add_button');
-            btn.style.marginTop = '10px';
-            btn.onclick = async () => {
-                btn.disabled = true;
-                btn.textContent = '...';
-                try {
-                    const res = await this.apiRequest('add-participant', { nickname: data.nickname });
-                    if (res.success) {
-                        this.showToast(I18n.t('add_success', { nick: data.nickname }), 'success');
-                        data.already_exists = true;
-                        data.country = res.participant?.country || '';
-                        this.showSearchFound(data, container);
-                        this.loadNearby(true);
-                    } else if (res.error === 'already_exists') {
-                        data.already_exists = true;
-                        this.showSearchFound(data, container);
-                    } else if (res.error === 'no_threads_profile') {
-                        this.showToast(I18n.t('error_not_on_threads', { nick: data.nickname }), 'error');
-                        btn.disabled = false;
-                        btn.textContent = I18n.t('add_button');
-                    } else throw new Error(res.error);
-                } catch (e) {
-                    this.showToast(e.message, 'error');
-                    btn.disabled = false;
-                    btn.textContent = I18n.t('add_button');
-                }
-            };
-            container.appendChild(btn);
-        }
     },
+
 
 
 

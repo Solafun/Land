@@ -481,6 +481,18 @@ async function saveNickname(req, res, user) {
     if (!nickname) return res.status(400).json({ success: false, error: 'Nickname required' });
     const clean = nickname.replace(/^@/, '').trim().toLowerCase();
 
+    // Check if nickname is already taken by another user
+    const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('threads_username', clean)
+        .neq('id', user.id)
+        .maybeSingle();
+
+    if (existingUser) {
+        return res.status(200).json({ success: false, error: 'nickname_taken' });
+    }
+
     const threadResult = await fetchFromThreads(clean);
     const avatarUrl = threadResult.exists ? threadResult.avatar : null;
 
@@ -498,6 +510,7 @@ async function saveNickname(req, res, user) {
 
     return res.status(200).json({ success: true, avatar_url: avatarUrl });
 }
+
 
 // ============================================
 // CHALLENGES

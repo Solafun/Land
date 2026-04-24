@@ -130,9 +130,10 @@ const App = {
                 this.startLocationTracking();
                 this.showToast('Успешно!', 'success');
             } else {
-                if (errorEl) errorEl.textContent = data.error || 'Ошибка сохранения';
+                if (errorEl) errorEl.textContent = I18n.t(data.error || 'Ошибка сохранения');
                 btn.disabled = false;
             }
+
         } catch (e) {
             if (errorEl) errorEl.textContent = 'Ошибка сети';
             btn.disabled = false;

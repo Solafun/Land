@@ -23,7 +23,8 @@ const I18n = {
             'Request failed': 'Request failed',
             'Database error': 'Database error',
             'Failed to initialize app data': 'Failed to initialize app data',
-            'Unauthorized: Invalid Telegram InitData': 'Unauthorized: Invalid Telegram InitData'
+            'Unauthorized: Invalid Telegram InitData': 'Unauthorized: Invalid Telegram InitData',
+            'nickname_taken': 'This nickname is already in use by another user'
         },
         ru: {
             nav_map: 'Карта', nav_nearby: 'Рядом', nav_profile: 'Профиль',
@@ -47,7 +48,8 @@ const I18n = {
             'Request failed': 'Ошибка запроса',
             'Database error': 'Ошибка базы данных',
             'Failed to initialize app data': 'Ошибка инициализации приложения',
-            'Unauthorized: Invalid Telegram InitData': 'Ошибка авторизации'
+            'Unauthorized: Invalid Telegram InitData': 'Ошибка авторизации',
+            'nickname_taken': 'Этот никнейм уже используется другим пользователем'
         }
     },
 

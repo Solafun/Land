@@ -159,6 +159,7 @@ export class EarthMap {
     }
 
     setPoints(points, currentUserId) {
+        if (!this.globe) return;
         // Clear old points
         if (this.points && this.points.length > 0) {
             for (let p of this.points) {
@@ -261,6 +262,7 @@ export class EarthMap {
     }
     
     focusUser(lat, lng) {
+        if (!this.globe) return;
         // Rotate globe so the user's point faces the camera, WITHOUT zooming
         const targetRotationY = -lng * (Math.PI / 180) - Math.PI / 2;
         

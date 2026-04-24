@@ -89,15 +89,16 @@ const App = {
 
         const needsOnboarding = this.userData && !this.userData.threads_verified;
 
-        document.getElementById('maintenance-stub').classList.toggle('hidden', mode !== 'maintenance');
-        document.getElementById('verification-stub').classList.toggle('hidden', mode !== 'verify_only');
-        document.getElementById('onboarding-stub').classList.toggle('hidden', !needsOnboarding || mode === 'maintenance');
+        document.getElementById('maintenance-stub')?.classList.toggle('hidden', mode !== 'maintenance');
+        document.getElementById('verification-stub')?.classList.toggle('hidden', mode !== 'verify_only');
+        document.getElementById('onboarding-stub')?.classList.toggle('hidden', !needsOnboarding || mode === 'maintenance');
 
         const blockedStub = document.getElementById('blocked-stub');
         if (blockedStub) blockedStub.classList.toggle('hidden', mode !== 'blocked');
 
         const showContent = mode === 'active' && !needsOnboarding;
         document.getElementById('main-app-content')?.classList.toggle('hidden', !showContent);
+
 
         if (mode === 'maintenance' || mode === 'verify_only' || mode === 'blocked' || needsOnboarding) {
             document.querySelector('.clay-nav')?.classList.add('hidden');
@@ -243,9 +244,13 @@ const App = {
         const searchBtn = document.getElementById('search-btn');
         searchBtn?.addEventListener('click', () => {
             if (searchBtn.textContent === 'X') {
-                document.getElementById('search-input').value = '';
-                document.getElementById('search-result').classList.add('hidden');
-                document.getElementById('search-result').innerHTML = '';
+                const input = document.getElementById('search-input');
+                if (input) input.value = '';
+                const result = document.getElementById('search-result');
+                if (result) {
+                    result.classList.add('hidden');
+                    result.innerHTML = '';
+                }
                 searchBtn.textContent = 'Go';
             } else {
                 this.searchUser();
@@ -254,8 +259,11 @@ const App = {
         document.getElementById('search-input')?.addEventListener('input', (e) => {
             const val = e.target.value.trim();
             if (val === '') {
-                document.getElementById('search-result').classList.add('hidden');
-                document.getElementById('search-result').innerHTML = '';
+                const result = document.getElementById('search-result');
+                if (result) {
+                    result.classList.add('hidden');
+                    result.innerHTML = '';
+                }
             }
             if (searchBtn && searchBtn.textContent === 'X' && val !== '') {
                 searchBtn.textContent = 'Go';

@@ -1130,7 +1130,6 @@ const App = {
         }
     },
 
-    },
 
 
     showDepositModal() {

@@ -1081,14 +1081,8 @@ const App = {
 
         const status = document.createElement('div');
         status.style.fontSize = '14px';
-
-        if (data.already_exists) {
-            status.textContent = data.country || 'Location unknown';
-            status.style.color = 'var(--text-mutted)';
-        } else {
-            status.textContent = I18n.t('add_found');
-            status.style.color = 'var(--accent)';
-        }
+        status.style.color = 'var(--text-mutted)';
+        status.textContent = data.country || 'Earth';
 
         info.appendChild(nick);
         info.appendChild(status);

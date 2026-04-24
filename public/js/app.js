@@ -575,6 +575,7 @@ const App = {
             }
 
             const dist = this.formatDistance(meters);
+            const locationDisplay = user.country || dist;
 
             el.innerHTML = `
                 <div class="leaderboard-item-link" onclick="App.viewNearbyUser('${user.threads_username || user.id}')">
@@ -583,13 +584,14 @@ const App = {
                     </div>
                     <div class="item-info">
                         <div class="item-nick">@${user.threads_username || 'user'}</div>
-                        <div class="distance-badge">${dist}</div>
+                        <div class="distance-badge">${locationDisplay}</div>
                     </div>
                     <div class="item-rank">
-                        <i class="pi pi-chevron-right" style="font-size: 12px; color: var(--text-mutted);"></i>
+                        <i class="fa-solid fa-chevron-right" style="font-size: 12px; color: var(--text-mutted); opacity: 0.5;"></i>
                     </div>
                 </div>
             `;
+
             fragment.appendChild(el);
         });
         list.appendChild(fragment);
@@ -621,9 +623,11 @@ const App = {
     },
 
     viewNearbyUser(username) {
+        if (!username) return;
         TelegramApp.haptic('impact');
-        this.showToast(`Viewing @${username}`, 'info');
+        this.openThreadsUrl(`https://www.threads.com/@${username}`);
     },
+
 
     async apiRequest(action, data = {}, retries = 3) {
         try {

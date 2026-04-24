@@ -1049,14 +1049,6 @@ const App = {
         container.innerHTML = '';
         container.classList.add('search-result-card');
 
-        let isSubscribed = false;
-        if (data.already_exists) {
-            try {
-                const subData = await this.apiRequest('check-subscription', { username: data.nickname });
-                isSubscribed = subData.subscribed;
-            } catch (e) { }
-        }
-
         const av = document.createElement('div');
         av.className = 'result-avatar';
         av.style.width = '60px';
@@ -1070,6 +1062,10 @@ const App = {
             img.onerror = () => { av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'; };
             av.appendChild(img);
         } else av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+
+        const info = document.createElement('div');
+        info.className = 'result-info';
+        info.style.flex = '1';
 
         const url = `https://www.threads.com/@${data.nickname}`;
         const nick = document.createElement('div');
@@ -1087,21 +1083,21 @@ const App = {
         status.style.fontSize = '14px';
 
         if (data.already_exists) {
-            let userRankText = '>50';
-            if (this.lastLeaderboard) {
-                const lbItem = this.lastLeaderboard.find(i => i.nickname === data.nickname);
-                if (lbItem) userRankText = lbItem.rank;
-            }
-            status.innerHTML = I18n.t('add_already_score', { score: data.score || 0, rank: userRankText });
+            status.textContent = data.country || 'Location unknown';
             status.style.color = 'var(--text-mutted)';
         } else {
             status.textContent = I18n.t('add_found');
             status.style.color = 'var(--accent)';
         }
 
-        const btn = document.createElement('button');
+        info.appendChild(nick);
+        info.appendChild(status);
+
+        container.appendChild(av);
+        container.appendChild(info);
 
         if (!data.already_exists) {
+            const btn = document.createElement('button');
             btn.className = 'clay-btn clay-primary';
             btn.textContent = I18n.t('add_button');
             btn.style.marginTop = '10px';
@@ -1113,8 +1109,9 @@ const App = {
                     if (res.success) {
                         this.showToast(I18n.t('add_success', { nick: data.nickname }), 'success');
                         data.already_exists = true;
+                        data.country = res.participant?.country || '';
                         this.showSearchFound(data, container);
-                        this.loadNearby(true); // REFRESH LIST
+                        this.loadNearby(true);
                     } else if (res.error === 'already_exists') {
                         data.already_exists = true;
                         this.showSearchFound(data, container);
@@ -1129,32 +1126,12 @@ const App = {
                     btn.textContent = I18n.t('add_button');
                 }
             };
-        } else {
-            btn.className = `clay-btn ${isSubscribed ? 'clay-secondary' : 'clay-primary'}`;
-            btn.textContent = isSubscribed ? I18n.t('sub_btn_unsubscribe') : I18n.t('sub_btn_subscribe');
-            btn.style.marginTop = '10px';
-            btn.onclick = async () => {
-                TelegramApp.haptic('impact');
-                btn.disabled = true;
-                try {
-                    const res = await this.apiRequest('toggle-subscription', { username: data.nickname });
-                    if (res.success) {
-                        isSubscribed = res.subscribed;
-                        btn.className = `clay-btn ${isSubscribed ? 'clay-secondary' : 'clay-primary'}`;
-                        btn.textContent = isSubscribed ? I18n.t('sub_btn_unsubscribe') : I18n.t('sub_btn_subscribe');
-                        this.showToast(isSubscribed ? I18n.t('sub_subscribed') : I18n.t('sub_unsubscribed'), isSubscribed ? 'success' : 'warning');
-                    }
-                } catch (e) { }
-                btn.disabled = false;
-            };
+            container.appendChild(btn);
         }
-
-        container.appendChild(av);
-        container.appendChild(nick);
-        container.appendChild(status);
-        container.appendChild(btn);
-        container.classList.remove('hidden');
     },
+
+    },
+
 
     showDepositModal() {
         TelegramApp.haptic('impact');

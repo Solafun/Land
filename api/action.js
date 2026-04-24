@@ -426,7 +426,7 @@ async function searchThreads(req, res, user) {
     // 1. Check users table
     const { data: existingUser } = await supabase
         .from('users')
-        .select('id, threads_username, threads_avatar_url')
+        .select('id, threads_username, threads_avatar_url, country')
         .eq('threads_username', clean)
         .maybeSingle();
 
@@ -436,7 +436,8 @@ async function searchThreads(req, res, user) {
             found: true,
             already_exists: true,
             nickname: existingUser.threads_username,
-            avatar_url: existingUser.threads_avatar_url
+            avatar_url: existingUser.threads_avatar_url,
+            country: existingUser.country
         });
     }
 
@@ -1021,7 +1022,8 @@ async function updateLocation(req, res, user) {
             threads_avatar_url: u.threads_avatar_url,
             distance_meters: u.distance_meters,
             lat: u.lat,
-            lng: u.lng
+            lng: u.lng,
+            country: u.country
         }));
 
         return res.status(200).json({

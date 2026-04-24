@@ -423,25 +423,52 @@ async function searchThreads(req, res, user) {
     const { nickname } = req.body;
     const clean = nickname.replace(/^@/, '').trim().toLowerCase();
 
-    const { data: existing } = await supabase
+    // 1. Check users table
+    const { data: existingUser } = await supabase
         .from('users')
         .select('id, threads_username, threads_avatar_url')
         .eq('threads_username', clean)
-        .single();
+        .maybeSingle();
 
-    const threadResult = await fetchFromThreads(clean);
-
-    if (existing) {
+    if (existingUser) {
         return res.status(200).json({
             success: true,
             found: true,
             already_exists: true,
-            nickname: existing.threads_username,
-            avatar_url: existing.threads_avatar_url || threadResult.avatar
+            nickname: existingUser.threads_username,
+            avatar_url: existingUser.threads_avatar_url
         });
     }
 
-    if (threadResult.exists) return res.status(200).json({ success: true, found: true, already_exists: false, nickname: clean, avatar_url: threadResult.avatar });
+    // 2. Check participants table
+    const { data: existingParticipant } = await supabase
+        .from('participants')
+        .select('id, nickname, avatar_url')
+        .eq('nickname', clean)
+        .maybeSingle();
+
+    if (existingParticipant) {
+        return res.status(200).json({
+            success: true,
+            found: true,
+            already_exists: true,
+            nickname: existingParticipant.nickname,
+            avatar_url: existingParticipant.avatar_url
+        });
+    }
+
+    // 3. Fallback to scraping Threads
+    const threadResult = await fetchFromThreads(clean);
+    if (threadResult.exists) {
+        return res.status(200).json({
+            success: true,
+            found: true,
+            already_exists: false,
+            nickname: clean,
+            avatar_url: threadResult.avatar
+        });
+    }
+
     return res.status(200).json({ success: true, found: false, nickname: clean });
 }
 
@@ -1125,6 +1152,30 @@ async function getNearbyHandler(req, res, user) {
             country: u.country
         }));
 
+        // ADDITION: Include participants who are not in users table yet
+        const { data: discovered } = await supabase
+            .from('participants')
+            .select('id, nickname, avatar_url, created_at')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        const mergedNearby = [...nearbyMapped];
+        if (discovered && discovered.length > 0) {
+            const userNicks = new Set(nearbyMapped.map(u => u.threads_username));
+            discovered.forEach(p => {
+                if (!userNicks.has(p.nickname)) {
+                    mergedNearby.push({
+                        id: `p_${p.id}`,
+                        threads_username: p.nickname,
+                        threads_avatar_url: p.avatar_url,
+                        distance_meters: null,
+                        is_participant: true,
+                        country: 'Threads'
+                    });
+                }
+            });
+        }
+
         // FIX: Исключаем нулевые координаты из точек карты
         const { data: pointsRes } = await supabase
             .from('users')
@@ -1143,7 +1194,7 @@ async function getNearbyHandler(req, res, user) {
             avatar_url: u.threads_avatar_url
         }));
 
-        return res.status(200).json({ success: true, nearby: nearbyMapped, points });
+        return res.status(200).json({ success: true, nearby: mergedNearby, points });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
     }

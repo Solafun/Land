@@ -1047,6 +1047,7 @@ const App = {
     async showSearchFound(data, container) {
         this.lastSearchResult = data;
         container.innerHTML = '';
+        container.classList.add('search-result-card');
 
         let isSubscribed = false;
         if (data.already_exists) {
@@ -1112,7 +1113,10 @@ const App = {
                     if (res.success) {
                         this.showToast(I18n.t('add_success', { nick: data.nickname }), 'success');
                         data.already_exists = true;
-                        data.score = 0;
+                        this.showSearchFound(data, container);
+                        this.loadNearby(true); // REFRESH LIST
+                    } else if (res.error === 'already_exists') {
+                        data.already_exists = true;
                         this.showSearchFound(data, container);
                     } else if (res.error === 'no_threads_profile') {
                         this.showToast(I18n.t('error_not_on_threads', { nick: data.nickname }), 'error');

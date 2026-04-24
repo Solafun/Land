@@ -22,9 +22,21 @@ const I18n = {
             'Success!': 'Success!',
             'Request failed': 'Request failed',
             'Database error': 'Database error',
-            'Failed to initialize app data': 'Failed to initialize app data',
             'Unauthorized: Invalid Telegram InitData': 'Unauthorized: Invalid Telegram InitData',
-            'nickname_taken': 'This nickname is already in use by another user'
+            'nickname_taken': 'This nickname is already in use by another user',
+            'add_enter_username': 'Please enter a username',
+            'add_searching': 'Searching...',
+            'add_not_found': 'User @{nick} not found on Threads',
+            'error_search_failed': 'Search failed. Try again',
+            'add_already_score': 'Score: {score} | Rank: {rank}',
+            'add_found': 'Found on Threads!',
+            'add_button': 'Add to Nearby',
+            'add_success': '@{nick} added!',
+            'error_not_on_threads': '@{nick} not found or private',
+            'sub_btn_subscribe': 'Follow',
+            'sub_btn_unsubscribe': 'Unfollow',
+            'sub_subscribed': 'Following!',
+            'sub_unsubscribed': 'Unfollowed'
         },
         ru: {
             nav_map: 'Карта', nav_nearby: 'Рядом', nav_profile: 'Профиль',
@@ -47,9 +59,21 @@ const I18n = {
             'Success!': 'Успешно!',
             'Request failed': 'Ошибка запроса',
             'Database error': 'Ошибка базы данных',
-            'Failed to initialize app data': 'Ошибка инициализации приложения',
             'Unauthorized: Invalid Telegram InitData': 'Ошибка авторизации',
-            'nickname_taken': 'Этот никнейм уже используется другим пользователем'
+            'nickname_taken': 'Этот никнейм уже используется другим пользователем',
+            'add_enter_username': 'Введите никнейм',
+            'add_searching': 'Поиск...',
+            'add_not_found': 'Пользователь @{nick} не найден в Threads',
+            'error_search_failed': 'Ошибка поиска. Попробуйте еще раз',
+            'add_already_score': 'Счет: {score} | Ранг: {rank}',
+            'add_found': 'Найден в Threads!',
+            'add_button': 'Добавить в «Рядом»',
+            'add_success': '@{nick} добавлен!',
+            'error_not_on_threads': '@{nick} не найден или профиль скрыт',
+            'sub_btn_subscribe': 'Подписаться',
+            'sub_btn_unsubscribe': 'Отписаться',
+            'sub_subscribed': 'Вы подписались!',
+            'sub_unsubscribed': 'Вы отписались'
         }
     },
 

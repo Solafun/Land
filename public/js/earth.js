@@ -6,7 +6,24 @@ export class EarthMap {
         this.container = document.getElementById(containerId);
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
+        try {
+            this.renderer = new THREE.WebGLRenderer({ 
+                antialias: window.devicePixelRatio < 2, // Only antialias on low-DPI screens to save memory
+                alpha: true,
+                powerPreference: 'high-performance'
+            });
+            
+            // Check if context was actually created
+            if (!this.renderer.getContext()) {
+                throw new Error('WebGL Context creation failed');
+            }
+        } catch (e) {
+            console.error('EarthMap: WebGL failed to initialize', e);
+            this.renderer = null;
+            this._showError('3D Map unavailable on this device');
+            return;
+        }
         
         this.globe = null;
         this.points = [];
@@ -15,7 +32,28 @@ export class EarthMap {
         this.init();
     }
 
+    _showError(msg) {
+        if (!this.container) return;
+        this.container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6b6b7b;font-size:14px;text-align:center;padding:20px;">${msg}</div>`;
+    }
+
+
     init() {
+        if (!this.renderer) return;
+
+        // Handle context loss
+        this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
+            event.preventDefault();
+            console.warn('EarthMap: WebGL context lost.');
+            this.isContextLost = true;
+        }, false);
+
+        this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+            console.log('EarthMap: WebGL context restored. Re-initializing...');
+            this.isContextLost = false;
+            this.init();
+        }, false);
+
         let width = window.innerWidth;
         let height = window.innerHeight;
         if (width > height && width < 950) {
@@ -81,6 +119,7 @@ export class EarthMap {
     }
 
     onWindowResize() {
+        if (!this.renderer) return;
         let width = window.innerWidth;
         let height = window.innerHeight;
 
@@ -97,6 +136,7 @@ export class EarthMap {
     }
 
     animate() {
+        if (!this.renderer || this.isContextLost) return;
         requestAnimationFrame(() => this.animate());
         
         // Smooth globe rotation to user's location (no zoom)

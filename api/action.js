@@ -78,6 +78,35 @@ function getLocaleFromLanguage(langCode) {
     return map[langCode] || 'Other';
 }
 
+async function reverseGeocode(lat, lng) {
+    let country = 'Earth';
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {
+            headers: { 'User-Agent': 'LandApp/1.0' },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const addr = geoData.address;
+            const city = addr.city || addr.town || addr.village || addr.suburb || addr.city_district || addr.county;
+            const countryName = addr.country;
+            if (city && countryName) {
+                country = `${city}, ${countryName}`;
+            } else {
+                country = countryName || addr.state || addr.region || (geoData.display_name ? geoData.display_name.split(',').pop().trim() : 'Earth');
+            }
+        }
+    } catch (e) {
+        console.warn('Country lookup failed:', e.message);
+    }
+    return country;
+}
+
 // ============================================
 // THREADS: Парсинг профиля
 // ============================================
@@ -907,33 +936,7 @@ async function updateLocation(req, res, user) {
     }
 
     try {
-        let country = 'Earth';
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000);
-
-            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${parsedLat}&lon=${parsedLng}&zoom=10&addressdetails=1`, {
-                headers: { 'User-Agent': 'LandApp/1.0' },
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            if (geoRes.ok) {
-                const geoData = await geoRes.json();
-                const addr = geoData.address;
-                const city = addr.city || addr.town || addr.village || addr.suburb || addr.city_district || addr.county;
-                const countryName = addr.country;
-                if (city && countryName) {
-                    country = `${city}, ${countryName}`;
-                } else {
-                    country = countryName || addr.state || addr.region || geoData.display_name.split(',').pop().trim();
-                }
-            } else {
-                console.warn('Nominatim error status:', geoRes.status);
-            }
-        } catch (e) {
-            console.warn('Country lookup failed:', e.message);
-        }
+        const country = await reverseGeocode(parsedLat, parsedLng);
 
         const { data, error } = await supabase.rpc('update_location_and_get_nearby', {
             p_user_id: user.id,
@@ -1065,11 +1068,12 @@ async function getNearbyHandler(req, res, user) {
 
         if (hasValidCoords) {
             // Координаты валидные — обновляем позицию и получаем ближайших
+            const country = await reverseGeocode(parsedLat, parsedLng);
             const { data, error } = await supabase.rpc('update_location_and_get_nearby', {
                 p_user_id: user.id,
                 p_lat: parsedLat,
                 p_lng: parsedLng,
-                p_country: 'Earth'
+                p_country: country
             });
             if (!error) nearby = (data || []);
         } else {
